@@ -6,3 +6,5 @@ firebase-admin==6.5.0
 supabase==2.3.0
 Pillow==10.2.0
 werkzeug==3.0.1
+gunicorn==21.2.0
+requests==2.31.0
