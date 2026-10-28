@@ -2,7 +2,7 @@
    SAVED FOREVER - OOCSS RESPONSIVE DESIGN SYSTEM (MOBILE & DESKTOP)
    ========================================================================== */
 
-/* 1. DESIGN TOKENS (Properties / Variables) */
+/* 1. DESIGN TOKENS (Variables) */
 :root {
   --sf-emerald-50:  #ecfdf5;
   --sf-emerald-100: #d1fae5;
@@ -39,6 +39,16 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ป้องกัน iOS Auto-Zoom เมื่อคลิกที่ช่อง Input บนสมาร์ทโฟน */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  font-size: 16px !important;
+}
+
 /* 3. NAVIGATION COMPONENT (.sf-navbar) */
 .sf-navbar {
   background: linear-gradient(135deg, var(--sf-emerald-950) 0%, var(--sf-emerald-900) 100%);
@@ -64,7 +74,7 @@ body {
   background: linear-gradient(135deg, var(--sf-emerald-950) 0%, var(--sf-emerald-800) 100%);
   color: #ffffff;
   border-radius: var(--sf-radius-lg);
-  padding: 1.5rem;
+  padding: 1.25rem;
   box-shadow: var(--sf-shadow-md);
 }
 
@@ -98,15 +108,15 @@ body {
   border: 1px solid var(--sf-emerald-200);
   background-color: #ffffff;
   border-radius: var(--sf-radius-md);
-  padding: 1.15rem;
+  padding: 1rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .sf-stat-icon {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   border-radius: var(--sf-radius-md);
   background-color: var(--sf-emerald-50);
@@ -114,7 +124,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
+  font-size: 1.35rem;
 }
 
 /* 7. BUTTONS (.sf-btn) */
@@ -122,7 +132,7 @@ body {
   font-weight: 600;
   border-radius: var(--sf-radius-sm);
   padding: 0.65rem 1.25rem;
-  min-height: 44px; /* Mobile Touch Target Standard */
+  min-height: 44px; /* Touch-friendly Standard */
   border: none;
   transition: all 0.2s ease;
   display: inline-flex;
@@ -152,6 +162,21 @@ body {
 
 .sf-btn--outline:hover {
   background: var(--sf-emerald-50);
+}
+
+/* 7.1 LOGOUT BUTTON MODIFIER (.sf-btn--logout) */
+.sf-btn--logout {
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5 !important;
+}
+
+.sf-btn--logout:hover {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
 }
 
 /* 8. PROGRESS BAR (.sf-progress-track, .sf-progress-fill) */
@@ -193,7 +218,7 @@ body {
   z-index: 1050;
   width: calc(100% - 2rem);
   max-width: 900px;
-  pointer-events: none; /* ป้องกันการบล็อกคลิกเมื่อซ่อนอยู่ */
+  pointer-events: none; /* ป้องกันการบล็อกคลิกบนตารางเมื่อซ่อนอยู่ */
 }
 
 .sf-batch-bar-wrapper.active {
@@ -212,32 +237,24 @@ body {
   }
 }
 
-/* 11. UTILITIES */
+/* 11. CHECKBOXES TOUCH TARGET */
+.form-check-input {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+}
+
+/* 12. UTILITIES */
 .sf-text-emerald { color: var(--sf-emerald-600) !important; }
 .sf-bg-mint       { background-color: var(--sf-emerald-50) !important; }
 
-/* 7.1 LOGOUT BUTTON MODIFIER (.sf-btn--logout) */
-.sf-btn--logout {
-  background-color: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5 !important;
-}
-
-.sf-btn--logout:hover {
-  background-color: #ef4444;
-  border-color: #ef4444;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
-  transform: translateY(-1px);
-}
-
-/* Responsive Adjustments for Mobile Viewports */
+/* RESPONSIVE ADJUSTMENTS FOR MOBILE VIEWPORTS */
 @media (max-width: 576px) {
   .sf-btn {
     width: 100%;
   }
   .sf-stat-card {
-    padding: 0.9rem;
+    padding: 0.85rem;
   }
   .table-responsive {
     font-size: 0.875rem;
@@ -247,4 +264,3 @@ body {
     width: calc(100% - 1rem);
   }
 }
-

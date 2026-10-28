@@ -76,7 +76,7 @@
                 <label for="game-id" class="form-label fw-semibold text-secondary small">เลือกเกมที่อยากได้</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light text-muted"><i class="bi bi-controller"></i></span>
-                    <select id="game-id" class="form-select py-2.5" name="game_id" required>
+                    <select id="game-id" class="form-select py-2" name="game_id" required>
                         {% for game in games %}
                             <option value="{{ game.id }}" data-price="{{ '%.2f'|format(game.price_cents / 100) }}">
                                 {{ game.name }} — ฿{{ '%.2f'|format(game.price_cents / 100) }}
@@ -90,12 +90,12 @@
                 <label for="target-amount" class="form-label fw-semibold text-secondary small">จำนวนเงินเป้าหมาย (บาท)</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light text-muted">฿</span>
-                    <input id="target-amount" class="form-control py-2.5" name="target_amount" type="number" min="0.01" step="0.01" placeholder="เว้นว่างไว้เพื่อใช้ราคาเกม">
+                    <input id="target-amount" class="form-control py-2" name="target_amount" type="number" min="0.01" step="0.01" placeholder="เว้นว่างไว้เพื่อใช้ราคาเกม">
                 </div>
             </div>
 
             <div class="col-12 col-md-3">
-                <button class="sf-btn sf-btn--primary w-100 py-2.5" type="submit">
+                <button class="sf-btn sf-btn--primary w-100 py-2" type="submit">
                     <i class="bi bi-piggy-bank-fill fs-5"></i>
                     <span>เริ่มออมเงิน</span>
                 </button>
@@ -145,7 +145,6 @@
                         <span class="small text-muted">เป้าหมาย: <strong class="text-dark">฿{{ '%.2f'|format(goal.target_cents / 100) }}</strong></span>
                     </div>
 
-                    <!-- Clean Progress Bar without Linter Errors -->
                     <div class="sf-progress-track mb-3" role="progressbar" aria-valuenow="{{ clean_progress }}" aria-valuemin="0" aria-valuemax="100">
                         <div class="sf-progress-fill" style="--sf-progress: {{ clean_progress }}%;"></div>
                     </div>
