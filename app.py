@@ -45,12 +45,12 @@ csp = {
         "'self'",
         "'unsafe-inline'",
         "https://cdn.jsdelivr.net",
-        "https://fonts.googleapis.com",  # อนุญาต CSS ของ Google Fonts
+        "https://fonts.googleapis.com",
     ],
     "font-src": [
         "'self'",
-        "https://cdn.jsdelivr.net",       # อนุญาตไฟล์ฟอนต์ Bootstrap Icons (.woff2)
-        "https://fonts.gstatic.com",      # อนุญาตไฟล์ฟอนต์ Google Fonts
+        "https://cdn.jsdelivr.net",
+        "https://fonts.gstatic.com",
         "data:",
     ],
     "img-src": ["'self'", "data:", "https://*.supabase.co"],
@@ -96,14 +96,37 @@ firebase_auth_domain = os.getenv("FIREBASE_AUTH_DOMAIN") or (
 )
 firebase_web_configured = bool(firebase_api_key and firebase_auth_domain)
 
+# --- Supabase Safe Initialization (เพื่อไม่ให้ Vercel Deploy Crash) ---
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SECRET_KEY")
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET")
-if not supabase_url or not supabase_key or not SUPABASE_BUCKET:
-    raise RuntimeError("SUPABASE_URL, SUPABASE_SECRET_KEY, and SUPABASE_BUCKET are required.")
+supabase_key = (
+    os.getenv("SUPABASE_SECRET_KEY")
+    or os.getenv("SUPABASE_KEY")
+    or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    or os.getenv("SUPABASE_ANON_KEY")
+)
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "portfolio-images")
 
-supabase: Client = create_client(supabase_url, supabase_key)
-DATABASE_PATH = Path(os.getenv("SAVINGS_DATABASE", Path(app.instance_path) / "savings.sqlite3"))
+
+def get_supabase_client() -> Client:
+    """สร้างหรือดึง Supabase Client แบบปลอดภัย"""
+    if not supabase_url or not supabase_key:
+        logger.warning("Supabase URL หรือ Key ยังไม่ได้ตั้งค่าใน Environment Variables")
+        return None
+    try:
+        return create_client(supabase_url, supabase_key)
+    except Exception as err:
+        logger.error(f"ไม่สามารถสร้าง Supabase Client ได้: {err}")
+        return None
+
+
+# ลองสร้าง Client ในระดับเริ่มต้น แต่ป้องกันการ Throw Exception ปิดกั้น Vercel
+supabase: Client = get_supabase_client()
+
+# --- SQLite Database Config (ปรับให้อยู่ใน /tmp/ เมื่อรันบน Vercel) ---
+default_db_path = (
+    Path("/tmp/savings.sqlite3") if os.getenv("VERCEL") else Path(app.instance_path) / "savings.sqlite3"
+)
+DATABASE_PATH = Path(os.getenv("SAVINGS_DATABASE", default_db_path))
 DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_IMAGE_TYPES = {
@@ -255,8 +278,12 @@ def session_login():
 
     try:
         decoded_token = firebase_auth.verify_id_token(id_token, app=firebase_app, check_revoked=True)
-    except (firebase_auth.InvalidIdTokenError, firebase_auth.ExpiredIdTokenError,
-            firebase_auth.RevokedIdTokenError, firebase_auth.UserDisabledError):
+    except (
+        firebase_auth.InvalidIdTokenError,
+        firebase_auth.ExpiredIdTokenError,
+        firebase_auth.RevokedIdTokenError,
+        firebase_auth.UserDisabledError,
+    ):
         return jsonify({"status": "error", "message": "Invalid or expired token."}), 401
     except firebase_admin.exceptions.FirebaseError:
         logger.exception("Firebase token verification failed.")
@@ -291,13 +318,17 @@ def dashboard():
 @app.route("/user/")
 @user_required
 def user_dashboard():
+    global supabase
     user_id = session["user_id"]
-    try:
-        files = supabase.storage.from_(SUPABASE_BUCKET).list(f"users/{user_id}")
-    except Exception:
-        logger.exception("Failed to list files from Supabase Storage.")
-        files = []
-        flash("ไม่สามารถโหลดรายการไฟล์ได้ในขณะนี้", "danger")
+    files = []
+
+    client = supabase or get_supabase_client()
+    if client:
+        try:
+            files = client.storage.from_(SUPABASE_BUCKET).list(f"users/{user_id}")
+        except Exception:
+            logger.exception("Failed to list files from Supabase Storage.")
+            flash("ไม่สามารถโหลดรายการไฟล์จาก Supabase ได้ในขณะนี้", "danger")
 
     with get_database() as connection:
         games = connection.execute(
@@ -434,7 +465,6 @@ def admin_dashboard():
             """
         ).fetchall()
 
-        # คำนวณสรุปสถิติด้านการออมเงินสำหรับ Dashboard Overview
         stats = {
             "total_games": len(games),
             "active_games": sum(1 for g in games if g["active"]),
@@ -520,7 +550,6 @@ def delete_game(game_id):
 @app.route("/admin/games/batch", methods=["POST"])
 @admin_required
 def batch_game_actions():
-    """จัดการแก้ไขหลายรายการพร้อมกัน / ลบหลายรายการพร้อมกัน (Batch CRUD Operations)"""
     action = request.form.get("action", "").strip()
     game_ids_raw = request.form.getlist("game_ids")
 
@@ -604,6 +633,7 @@ def batch_game_actions():
 @app.route("/upload", methods=["POST"])
 @user_required
 def upload_file():
+    global supabase
     uploaded_file = request.files.get("file")
     if uploaded_file is None or not uploaded_file.filename:
         flash("กรุณาเลือกไฟล์รูปภาพ", "danger")
@@ -619,12 +649,17 @@ def upload_file():
         flash("ไฟล์ที่เลือกไม่ใช่รูปภาพชนิดที่ถูกต้อง", "danger")
         return redirect(url_for("dashboard"))
 
+    client = supabase or get_supabase_client()
+    if not client:
+        flash("ไม่สามารถเชื่อมต่อ Supabase Storage ได้ กรุณาตรวจสอบการตั้งค่าคีย์", "danger")
+        return redirect(url_for("dashboard"))
+
     safe_name = f"{uuid.uuid4().hex}.{extension}"
     file_path = f"users/{session['user_id']}/{safe_name}"
     _, content_type = ALLOWED_IMAGE_TYPES[extension]
 
     try:
-        supabase.storage.from_(SUPABASE_BUCKET).upload(
+        client.storage.from_(SUPABASE_BUCKET).upload(
             path=file_path,
             file=file_bytes,
             file_options={"content-type": content_type},
@@ -641,13 +676,19 @@ def upload_file():
 @app.route("/delete-image/<filename>", methods=["POST"])
 @user_required
 def delete_image(filename):
+    global supabase
     if not re.fullmatch(r"[0-9a-f]{32}\.(?:png|jpg|jpeg|webp)", filename):
         flash("ชื่อไฟล์รูปภาพไม่ถูกต้อง", "danger")
         return redirect(url_for("dashboard"))
 
+    client = supabase or get_supabase_client()
+    if not client:
+        flash("ไม่สามารถเชื่อมต่อ Supabase Storage ได้", "danger")
+        return redirect(url_for("dashboard"))
+
     file_path = f"users/{session['user_id']}/{filename}"
     try:
-        supabase.storage.from_(SUPABASE_BUCKET).remove([file_path])
+        client.storage.from_(SUPABASE_BUCKET).remove([file_path])
     except Exception:
         logger.exception("Failed to delete image from Supabase Storage.")
         flash("ลบรูปภาพไม่สำเร็จ กรุณาลองใหม่", "danger")
