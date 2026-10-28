@@ -2,18 +2,16 @@ import json
 import logging
 import os
 import re
-import sqlite3
 import uuid
-from contextlib import contextmanager
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from io import BytesIO
-from pathlib import Path
 
 import firebase_admin
 from dotenv import load_dotenv
 from firebase_admin import auth as firebase_auth
-from firebase_admin import credentials
+from firebase_admin import credentials, db
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect
@@ -119,15 +117,7 @@ def get_supabase_client() -> Client:
         return None
 
 
-# ลองสร้าง Client ในระดับเริ่มต้น แต่ป้องกันการ Throw Exception ปิดกั้น Vercel
 supabase: Client = get_supabase_client()
-
-# --- SQLite Database Config (ปรับให้อยู่ใน /tmp/ เมื่อรันบน Vercel) ---
-default_db_path = (
-    Path("/tmp/savings.sqlite3") if os.getenv("VERCEL") else Path(app.instance_path) / "savings.sqlite3"
-)
-DATABASE_PATH = Path(os.getenv("SAVINGS_DATABASE", default_db_path))
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_IMAGE_TYPES = {
     "png": ("PNG", "image/png"),
@@ -135,54 +125,6 @@ ALLOWED_IMAGE_TYPES = {
     "jpeg": ("JPEG", "image/jpeg"),
     "webp": ("WEBP", "image/webp"),
 }
-
-
-@contextmanager
-def get_database():
-    connection = sqlite3.connect(DATABASE_PATH)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    try:
-        yield connection
-        connection.commit()
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
-
-
-def initialize_database():
-    with get_database() as connection:
-        connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS games (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                price_cents INTEGER NOT NULL CHECK (price_cents > 0),
-                active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS savings_goals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                game_id INTEGER NOT NULL REFERENCES games(id),
-                target_cents INTEGER NOT NULL CHECK (target_cents > 0),
-                saved_cents INTEGER NOT NULL DEFAULT 0 CHECK (saved_cents >= 0),
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS savings_transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                goal_id INTEGER NOT NULL REFERENCES savings_goals(id) ON DELETE CASCADE,
-                amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            """
-        )
-
-
-initialize_database()
 
 
 def parse_amount_cents(raw_value):
@@ -254,6 +196,96 @@ def render_auth_page(template):
     )
 
 
+# --- Helper Data Processing Functions (Firebase Realtime DB) ---
+def fetch_user_dashboard_data(user_id):
+    raw_games = db.reference("games").get() or {}
+    raw_goals = db.reference("savings_goals").get() or {}
+
+    games_dict = {}
+    active_games = []
+    if isinstance(raw_games, dict):
+        for g_id, val in raw_games.items():
+            if isinstance(val, dict):
+                g_item = dict(val)
+                g_item["id"] = str(g_id)
+                g_item["active"] = 1 if g_item.get("active", 1) in (1, True, "1", "on") else 0
+                g_item["price_cents"] = int(g_item.get("price_cents", 0))
+                games_dict[str(g_id)] = g_item
+                if g_item["active"] == 1:
+                    active_games.append(g_item)
+
+    active_games.sort(key=lambda x: str(x.get("name", "")).lower())
+
+    user_goals = []
+    if isinstance(raw_goals, dict):
+        for goal_id, val in raw_goals.items():
+            if isinstance(val, dict) and str(val.get("user_id")) == str(user_id):
+                goal = dict(val)
+                goal["id"] = str(goal_id)
+                gid = str(goal.get("game_id"))
+                game_info = games_dict.get(gid, {})
+                goal["game_name"] = game_info.get("name", "เกมที่ถูกลบ")
+                goal["price_cents"] = game_info.get("price_cents", goal.get("target_cents", 0))
+                goal["target_cents"] = int(goal.get("target_cents", 0))
+                goal["saved_cents"] = int(goal.get("saved_cents", 0))
+                user_goals.append(goal)
+
+    user_goals.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+    return active_games, user_goals
+
+
+def fetch_admin_dashboard_data():
+    raw_games = db.reference("games").get() or {}
+    raw_goals = db.reference("savings_goals").get() or {}
+
+    goals_list = []
+    if isinstance(raw_goals, dict):
+        for g_id, g_val in raw_goals.items():
+            if isinstance(g_val, dict):
+                goal = dict(g_val)
+                goal["id"] = str(g_id)
+                goals_list.append(goal)
+
+    game_goals_map = {}
+    total_goals_count = len(goals_list)
+    total_saved_all = 0
+
+    for g in goals_list:
+        gid = str(g.get("game_id"))
+        saved = int(g.get("saved_cents", 0))
+        total_saved_all += saved
+        if gid not in game_goals_map:
+            game_goals_map[gid] = {"count": 0, "saved": 0}
+        game_goals_map[gid]["count"] += 1
+        game_goals_map[gid]["saved"] += saved
+
+    games = []
+    if isinstance(raw_games, dict):
+        for key, val in raw_games.items():
+            if isinstance(val, dict):
+                game = dict(val)
+                game_id_str = str(key)
+                game["id"] = game_id_str
+                game["active"] = 1 if game.get("active", 1) in (1, True, "1", "on") else 0
+                game["price_cents"] = int(game.get("price_cents", 0))
+                game_stats = game_goals_map.get(game_id_str, {"count": 0, "saved": 0})
+                game["goal_count"] = game_stats["count"]
+                game["total_saved_cents"] = game_stats["saved"]
+                games.append(game)
+
+    games.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+
+    stats = {
+        "total_games": len(games),
+        "active_games": sum(1 for g in games if g["active"] == 1),
+        "total_goals": total_goals_count,
+        "total_saved_cents": total_saved_all,
+    }
+
+    return games, stats
+
+
+# --- Routes & Controllers ---
 @app.route("/")
 def home():
     return redirect(url_for("dashboard" if "user_id" in session else "login"))
@@ -330,21 +362,7 @@ def user_dashboard():
             logger.exception("Failed to list files from Supabase Storage.")
             flash("ไม่สามารถโหลดรายการไฟล์จาก Supabase ได้ในขณะนี้", "danger")
 
-    with get_database() as connection:
-        games = connection.execute(
-            "SELECT id, name, description, price_cents FROM games WHERE active = 1 ORDER BY name"
-        ).fetchall()
-        goals = connection.execute(
-            """
-            SELECT goals.id, goals.target_cents, goals.saved_cents, goals.created_at,
-                   games.name AS game_name, games.price_cents
-            FROM savings_goals AS goals
-            JOIN games ON games.id = goals.game_id
-            WHERE goals.user_id = ?
-            ORDER BY goals.created_at DESC, goals.id DESC
-            """,
-            (user_id,),
-        ).fetchall()
+    games, goals = fetch_user_dashboard_data(user_id)
 
     return render_template(
         "user/dashboard.html",
@@ -362,37 +380,38 @@ def user_dashboard():
 @app.route("/user/savings", methods=["POST"])
 @user_required
 def create_savings_goal():
-    try:
-        game_id = int(request.form.get("game_id", ""))
-    except ValueError:
+    game_id = request.form.get("game_id", "").strip()
+    if not game_id:
         flash("กรุณาเลือกเกมที่ถูกต้อง", "danger")
         return redirect(url_for("user_dashboard"))
 
-    with get_database() as connection:
-        game = connection.execute(
-            "SELECT id, price_cents FROM games WHERE id = ? AND active = 1",
-            (game_id,),
-        ).fetchone()
-        if game is None:
-            flash("ไม่พบเกมที่เลือก หรือเกมนี้ยังไม่เปิดให้ใช้งาน", "danger")
-            return redirect(url_for("user_dashboard"))
+    game_ref = db.reference(f"games/{game_id}")
+    game_data = game_ref.get()
+    if not game_data or not (game_data.get("active") in (1, True, "1", "on")):
+        flash("ไม่พบเกมที่เลือก หรือเกมนี้ยังไม่เปิดให้ใช้งาน", "danger")
+        return redirect(url_for("user_dashboard"))
 
-        raw_target = request.form.get("target_amount", "").strip()
-        target_cents = parse_amount_cents(raw_target) if raw_target else game["price_cents"]
-        if target_cents is None:
-            flash("จำนวนเงินเป้าหมายต้องมากกว่า 0 และใส่ทศนิยมได้ไม่เกิน 2 ตำแหน่ง", "danger")
-            return redirect(url_for("user_dashboard"))
+    raw_target = request.form.get("target_amount", "").strip()
+    target_cents = parse_amount_cents(raw_target) if raw_target else int(game_data.get("price_cents", 0))
+    if target_cents is None or target_cents <= 0:
+        flash("จำนวนเงินเป้าหมายต้องมากกว่า 0 และใส่ทศนิยมได้ไม่เกิน 2 ตำแหน่ง", "danger")
+        return redirect(url_for("user_dashboard"))
 
-        connection.execute(
-            "INSERT INTO savings_goals (user_id, game_id, target_cents) VALUES (?, ?, ?)",
-            (session["user_id"], game_id, target_cents),
-        )
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    db.reference("savings_goals").push({
+        "user_id": session["user_id"],
+        "game_id": game_id,
+        "target_cents": target_cents,
+        "saved_cents": 0,
+        "created_at": now_str,
+    })
 
     flash("เพิ่มเป้าหมายการออมแล้ว", "success")
     return redirect(url_for("user_dashboard"))
 
 
-@app.route("/user/savings/<int:goal_id>/deposit", methods=["POST"])
+@app.route("/user/savings/<goal_id>/deposit", methods=["POST"])
 @user_required
 def deposit_savings(goal_id):
     amount_cents = parse_amount_cents(request.form.get("amount", "").strip())
@@ -400,50 +419,45 @@ def deposit_savings(goal_id):
         flash("จำนวนเงินออมต้องมากกว่า 0 และใส่ทศนิยมได้ไม่เกิน 2 ตำแหน่ง", "danger")
         return redirect(url_for("user_dashboard"))
 
-    with get_database() as connection:
-        connection.execute("BEGIN IMMEDIATE")
-        goal = connection.execute(
-            """
-            SELECT target_cents, saved_cents
-            FROM savings_goals
-            WHERE id = ? AND user_id = ?
-            """,
-            (goal_id, session["user_id"]),
-        ).fetchone()
-        if goal is None:
-            flash("ไม่พบเป้าหมายการออมนี้", "danger")
-            return redirect(url_for("user_dashboard"))
+    goal_ref = db.reference(f"savings_goals/{goal_id}")
+    goal = goal_ref.get()
+    if not goal or str(goal.get("user_id")) != str(session["user_id"]):
+        flash("ไม่พบเป้าหมายการออมนี้", "danger")
+        return redirect(url_for("user_dashboard"))
 
-        remaining_cents = goal["target_cents"] - goal["saved_cents"]
-        if amount_cents > remaining_cents:
-            flash("จำนวนเงินออมเกินยอดที่ยังขาดอยู่", "warning")
-            return redirect(url_for("user_dashboard"))
+    target_cents = int(goal.get("target_cents", 0))
+    saved_cents = int(goal.get("saved_cents", 0))
+    remaining_cents = target_cents - saved_cents
 
-        connection.execute(
-            "UPDATE savings_goals SET saved_cents = saved_cents + ? WHERE id = ? AND user_id = ?",
-            (amount_cents, goal_id, session["user_id"]),
-        )
-        connection.execute(
-            "INSERT INTO savings_transactions (goal_id, amount_cents) VALUES (?, ?)",
-            (goal_id, amount_cents),
-        )
+    if amount_cents > remaining_cents:
+        flash("จำนวนเงินออมเกินยอดที่ยังขาดอยู่", "warning")
+        return redirect(url_for("user_dashboard"))
+
+    new_saved = saved_cents + amount_cents
+    goal_ref.update({"saved_cents": new_saved})
+
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    db.reference("savings_transactions").push({
+        "goal_id": goal_id,
+        "amount_cents": amount_cents,
+        "created_at": now_str,
+    })
 
     flash("บันทึกเงินออมแล้ว", "success")
     return redirect(url_for("user_dashboard"))
 
 
-@app.route("/user/savings/<int:goal_id>/delete", methods=["POST"])
+@app.route("/user/savings/<goal_id>/delete", methods=["POST"])
 @user_required
 def delete_savings_goal(goal_id):
-    with get_database() as connection:
-        result = connection.execute(
-            "DELETE FROM savings_goals WHERE id = ? AND user_id = ?",
-            (goal_id, session["user_id"]),
-        )
-        if result.rowcount == 0:
-            flash("ไม่พบเป้าหมายการออมนี้", "danger")
-            return redirect(url_for("user_dashboard"))
+    goal_ref = db.reference(f"savings_goals/{goal_id}")
+    goal = goal_ref.get()
+    if not goal or str(goal.get("user_id")) != str(session["user_id"]):
+        flash("ไม่พบเป้าหมายการออมนี้", "danger")
+        return redirect(url_for("user_dashboard"))
 
+    goal_ref.delete()
     flash("ลบเป้าหมายการออมแล้ว", "success")
     return redirect(url_for("user_dashboard"))
 
@@ -451,27 +465,7 @@ def delete_savings_goal(goal_id):
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    with get_database() as connection:
-        games = connection.execute(
-            """
-            SELECT games.id, games.name, games.description, games.price_cents,
-                   games.active, games.created_at,
-                   COUNT(savings_goals.id) AS goal_count,
-                   COALESCE(SUM(savings_goals.saved_cents), 0) AS total_saved_cents
-            FROM games
-            LEFT JOIN savings_goals ON savings_goals.game_id = games.id
-            GROUP BY games.id
-            ORDER BY games.created_at DESC, games.id DESC
-            """
-        ).fetchall()
-
-        stats = {
-            "total_games": len(games),
-            "active_games": sum(1 for g in games if g["active"]),
-            "total_goals": sum(g["goal_count"] for g in games),
-            "total_saved_cents": sum(g["total_saved_cents"] for g in games),
-        }
-
+    games, stats = fetch_admin_dashboard_data()
     return render_template("admin/dashboard.html", email=session.get("email"), games=games, stats=stats)
 
 
@@ -491,16 +485,20 @@ def create_game():
         flash("ราคาเกมต้องมากกว่า 0 และใส่ทศนิยมได้ไม่เกิน 2 ตำแหน่ง", "danger")
         return redirect(url_for("admin_dashboard"))
 
-    with get_database() as connection:
-        connection.execute(
-            "INSERT INTO games (name, description, price_cents) VALUES (?, ?, ?)",
-            (name, description, price_cents),
-        )
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    db.reference("games").push({
+        "name": name,
+        "description": description,
+        "price_cents": price_cents,
+        "active": 1,
+        "created_at": now_str,
+    })
     flash("เพิ่มรายการเกมเป้าหมายออมเงินสำเร็จแล้ว", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/games/<int:game_id>/update", methods=["POST"])
+@app.route("/admin/games/<game_id>/update", methods=["POST"])
 @admin_required
 def update_game(game_id):
     name = request.form.get("name", "").strip()
@@ -511,38 +509,37 @@ def update_game(game_id):
         return redirect(url_for("admin_dashboard"))
 
     active = 1 if request.form.get("active") in ("on", "1") else 0
-    with get_database() as connection:
-        result = connection.execute(
-            """
-            UPDATE games SET name = ?, description = ?, price_cents = ?, active = ?
-            WHERE id = ?
-            """,
-            (name, description, price_cents, active, game_id),
-        )
-        if result.rowcount == 0:
-            flash("ไม่พบรายการเกมที่ต้องการแก้ไข", "danger")
-            return redirect(url_for("admin_dashboard"))
+    game_ref = db.reference(f"games/{game_id}")
+    if not game_ref.get():
+        flash("ไม่พบรายการเกมที่ต้องการแก้ไข", "danger")
+        return redirect(url_for("admin_dashboard"))
+
+    game_ref.update({
+        "name": name,
+        "description": description,
+        "price_cents": price_cents,
+        "active": active,
+    })
     flash("บันทึกการแก้ไขรายการเกมเรียบร้อยแล้ว", "success")
     return redirect(url_for("admin_dashboard"))
 
 
-@app.route("/admin/games/<int:game_id>/delete", methods=["POST"])
+@app.route("/admin/games/<game_id>/delete", methods=["POST"])
 @admin_required
 def delete_game(game_id):
-    with get_database() as connection:
-        game = connection.execute("SELECT id FROM games WHERE id = ?", (game_id,)).fetchone()
-        if game is None:
-            flash("ไม่พบรายการเกมที่ต้องการลบ", "danger")
-            return redirect(url_for("admin_dashboard"))
+    game_ref = db.reference(f"games/{game_id}")
+    if not game_ref.get():
+        flash("ไม่พบรายการเกมที่ต้องการลบ", "danger")
+        return redirect(url_for("admin_dashboard"))
 
-        goal_count = connection.execute(
-            "SELECT COUNT(*) FROM savings_goals WHERE game_id = ?", (game_id,)
-        ).fetchone()[0]
-        if goal_count:
-            flash("ลบรายการนี้ไม่ได้ เนื่องจากมีเป้าหมายการออมของผู้ใช้งานอยู่ ให้ใช้วิธีปิดการใช้งานแทน", "warning")
-            return redirect(url_for("admin_dashboard"))
+    raw_goals = db.reference("savings_goals").get() or {}
+    has_goals = any(isinstance(v, dict) and str(v.get("game_id")) == str(game_id) for v in raw_goals.values())
 
-        connection.execute("DELETE FROM games WHERE id = ?", (game_id,))
+    if has_goals:
+        flash("ลบรายการนี้ไม่ได้ เนื่องจากมีเป้าหมายการออมของผู้ใช้งานอยู่ ให้ใช้วิธีปิดการใช้งานแทน", "warning")
+        return redirect(url_for("admin_dashboard"))
+
+    game_ref.delete()
     flash("ลบรายการเกมเรียบร้อยแล้ว", "success")
     return redirect(url_for("admin_dashboard"))
 
@@ -551,81 +548,69 @@ def delete_game(game_id):
 @admin_required
 def batch_game_actions():
     action = request.form.get("action", "").strip()
-    game_ids_raw = request.form.getlist("game_ids")
+    game_ids = request.form.getlist("game_ids")
 
-    if not game_ids_raw:
+    if not game_ids:
         flash("กรุณาเลือกรายการอย่างน้อย 1 รายการเพื่อดำเนินการ", "warning")
         return redirect(url_for("admin_dashboard"))
 
-    try:
-        game_ids = [int(gid) for gid in game_ids_raw]
-    except ValueError:
-        flash("รหัสรายการเกมไม่ถูกต้อง", "danger")
-        return redirect(url_for("admin_dashboard"))
+    raw_goals = db.reference("savings_goals").get() or {}
+    goals_list = [v for v in raw_goals.values() if isinstance(v, dict)]
 
-    with get_database() as connection:
-        if action == "delete":
-            placeholders = ",".join("?" * len(game_ids))
-            goals_check = connection.execute(
-                f"""
-                SELECT game_id, COUNT(*) as cnt
-                FROM savings_goals
-                WHERE game_id IN ({placeholders})
-                GROUP BY game_id
-                """,
-                game_ids,
-            ).fetchall()
+    if action == "delete":
+        blocked_ids = set()
+        for g in goals_list:
+            blocked_ids.add(str(g.get("game_id")))
 
-            blocked_ids = {row["game_id"] for row in goals_check if row["cnt"] > 0}
-            deletable_ids = [gid for gid in game_ids if gid not in blocked_ids]
+        deletable_ids = [gid for gid in game_ids if str(gid) not in blocked_ids]
 
-            if deletable_ids:
-                del_placeholders = ",".join("?" * len(deletable_ids))
-                connection.execute(f"DELETE FROM games WHERE id IN ({del_placeholders})", deletable_ids)
+        for gid in deletable_ids:
+            db.reference(f"games/{gid}").delete()
 
-            if blocked_ids and deletable_ids:
-                flash(
-                    f"ลบรายการสำเร็จ {len(deletable_ids)} รายการ (มี {len(blocked_ids)} รายการที่ลบไม่ได้เพราะมีผู้ใช้ออมเงินอยู่)",
-                    "warning",
-                )
-            elif blocked_ids and not deletable_ids:
-                flash("ไม่สามารถลบรายการที่เลือกได้ เนื่องจากทุกรายการมีผู้ใช้ออมเงินอยู่ ให้ใช้วิธีปิดการใช้งานแทน", "danger")
-            else:
-                flash(f"ลบรายการเกมที่เลือกเรียบร้อยแล้ว {len(deletable_ids)} รายการ", "success")
-
-        elif action == "update":
-            updated_count = 0
-            for gid in game_ids:
-                name = request.form.get(f"name_{gid}", "").strip()
-                description = request.form.get(f"description_{gid}", "").strip()
-                price_raw = request.form.get(f"price_{gid}", "").strip()
-                price_cents = parse_amount_cents(price_raw)
-                active = 1 if request.form.get(f"active_{gid}") in ("on", "1") else 0
-
-                if name and len(name) <= 120 and len(description) <= 1000 and price_cents is not None:
-                    res = connection.execute(
-                        """
-                        UPDATE games
-                        SET name = ?, description = ?, price_cents = ?, active = ?
-                        WHERE id = ?
-                        """,
-                        (name, description, price_cents, active, gid),
-                    )
-                    if res.rowcount > 0:
-                        updated_count += 1
-
-            flash(f"บันทึกการแก้ไขสำเร็จทั้งหมด {updated_count} รายการ", "success")
-
-        elif action == "toggle_active":
-            target_status = 1 if request.form.get("active_status") == "1" else 0
-            placeholders = ",".join("?" * len(game_ids))
-            params = [target_status] + game_ids
-            connection.execute(f"UPDATE games SET active = ? WHERE id IN ({placeholders})", params)
-            status_text = "เปิดการใช้งาน" if target_status == 1 else "ปิดการใช้งาน"
-            flash(f"ปรับสถานะเป็น{status_text}เรียบร้อยแล้ว {len(game_ids)} รายการ", "success")
-
+        if blocked_ids and deletable_ids:
+            flash(
+                f"ลบรายการสำเร็จ {len(deletable_ids)} รายการ (มีบางรายการที่ลบไม่ได้เพราะมีผู้ใช้ออมเงินอยู่)",
+                "warning",
+            )
+        elif not deletable_ids:
+            flash("ไม่สามารถลบรายการที่เลือกได้ เนื่องจากทุกรายการมีผู้ใช้ออมเงินอยู่ ให้ใช้วิธีปิดการใช้งานแทน", "danger")
         else:
-            flash("รูปแบบคำสั่งไม่ถูกต้อง", "danger")
+            flash(f"ลบรายการเกมที่เลือกเรียบร้อยแล้ว {len(deletable_ids)} รายการ", "success")
+
+    elif action == "update":
+        updated_count = 0
+        for gid in game_ids:
+            name = request.form.get(f"name_{gid}", "").strip()
+            description = request.form.get(f"description_{gid}", "").strip()
+            price_raw = request.form.get(f"price_{gid}", "").strip()
+            price_cents = parse_amount_cents(price_raw)
+            active = 1 if request.form.get(f"active_{gid}") in ("on", "1") else 0
+
+            if name and len(name) <= 120 and len(description) <= 1000 and price_cents is not None:
+                game_ref = db.reference(f"games/{gid}")
+                if game_ref.get():
+                    game_ref.update({
+                        "name": name,
+                        "description": description,
+                        "price_cents": price_cents,
+                        "active": active,
+                    })
+                    updated_count += 1
+
+        flash(f"บันทึกการแก้ไขสำเร็จทั้งหมด {updated_count} รายการ", "success")
+
+    elif action == "toggle_active":
+        target_status = 1 if request.form.get("active_status") == "1" else 0
+        for gid in game_ids:
+            game_ref = db.reference(f"games/{gid}")
+            if game_ref.get():
+                game_ref.update({"active": target_status})
+
+        status_text = "เปิดการใช้งาน" if target_status == 1 else "ปิดการใช้งาน"
+        flash(f"ปรับสถานะเป็น{status_text}เรียบร้อยแล้ว {len(game_ids)} รายการ", "success")
+
+    else:
+        flash("รูปแบบคำสั่งไม่ถูกต้อง", "danger")
 
     return redirect(url_for("admin_dashboard"))
 

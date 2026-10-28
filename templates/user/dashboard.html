@@ -1,21 +1,82 @@
 {% extends "base.html" %}
-{% block title %}เป้าหมายการออม | Saved Forever{% endblock %}
+{% block title %}เป้าหมายการออมของฉัน | Saved Forever{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h1 class="h2">เป้าหมายการออมของฉัน</h1>
-    <p class="text-muted mb-0">สวัสดี {{ email }} · Role: {{ role }}</p>
+<!-- คำนวณยอดสรุปสถิติการออมเงินของผู้ใช้งาน -->
+{% set ns = namespace(total_saved=0, total_target=0, completed_count=0) %}
+{% for goal in goals %}
+    {% set ns.total_saved = ns.total_saved + goal.saved_cents %}
+    {% set ns.total_target = ns.total_target + goal.target_cents %}
+    {% if goal.saved_cents >= goal.target_cents %}
+        {% set ns.completed_count = ns.completed_count + 1 %}
+    {% endif %}
+{% endfor %}
+
+<!-- Header Banner Responsive -->
+<div class="sf-header-banner mb-4">
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fs-3">🐷</span>
+                <h1 class="h3 mb-0 fw-bold">เป้าหมายการออมเงินของฉัน</h1>
+            </div>
+            <p class="mb-0 text-white-50 small fs-6">
+                ยินดีต้อนรับกลับมา: <span class="text-white fw-semibold">{{ email }}</span>
+            </p>
+        </div>
+        <div>
+            <span class="badge bg-light text-dark fs-6 px-3 py-2 rounded-pill shadow-sm d-inline-flex align-items-center gap-1">
+                <i class="bi bi-person-badge text-success"></i> ผู้ใช้งานทั่วไป
+            </span>
+        </div>
+    </div>
 </div>
 
-<section class="card shadow-sm border-0 mb-4">
-    <div class="card-body">
-        <h2 class="h5 card-title">เริ่มออมซื้อเกม</h2>
-        {% if games %}
-            <form action="{{ url_for('create_savings_goal') }}" method="post" class="row g-3 align-items-end">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="col-12 col-md-5">
-                    <label for="game-id" class="form-label">เลือกเกม</label>
-                    <select id="game-id" class="form-select" name="game_id" required>
+<!-- Overview Stats Grid Responsive (1 col Mobile, 3 cols Desktop) -->
+<section class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="sf-stat-card h-100">
+            <div class="sf-stat-icon">💰</div>
+            <div>
+                <small class="text-muted fw-medium d-block">เงินออมสะสมรวม</small>
+                <span class="fs-4 fw-bold sf-text-emerald">฿{{ '%.2f'|format(ns.total_saved / 100) }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-4">
+        <div class="sf-stat-card h-100">
+            <div class="sf-stat-icon">🎮</div>
+            <div>
+                <small class="text-muted fw-medium d-block">เป้าหมายทั้งหมด</small>
+                <span class="fs-4 fw-bold text-dark">{{ goals|length }} รายการ</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-12 col-lg-4">
+        <div class="sf-stat-card h-100">
+            <div class="sf-stat-icon">🏆</div>
+            <div>
+                <small class="text-muted fw-medium d-block">ออมเงินสำเร็จแล้ว</small>
+                <span class="fs-4 fw-bold text-primary">{{ ns.completed_count }} เกม</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add Savings Goal Section -->
+<section class="sf-card p-3.5 p-sm-4 mb-4">
+    <h2 class="h5 card-title mb-3 d-flex align-items-center gap-2 fw-bold">
+        <span class="sf-text-emerald fs-5">➕</span> ตั้งเป้าหมายออมเงินซื้อเกมใหม่
+    </h2>
+    {% if games %}
+        <form action="{{ url_for('create_savings_goal') }}" method="post" class="row g-3 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="col-12 col-md-5">
+                <label for="game-id" class="form-label fw-semibold text-secondary small">เลือกเกมที่อยากได้</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted"><i class="bi bi-controller"></i></span>
+                    <select id="game-id" class="form-select py-2.5" name="game_id" required>
                         {% for game in games %}
                             <option value="{{ game.id }}" data-price="{{ '%.2f'|format(game.price_cents / 100) }}">
                                 {{ game.name }} — ฿{{ '%.2f'|format(game.price_cents / 100) }}
@@ -23,98 +84,166 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-12 col-md-4">
-                    <label for="target-amount" class="form-label">เป้าหมายที่ต้องการออม (บาท)</label>
-                    <input id="target-amount" class="form-control" name="target_amount" type="number" min="0.01" step="0.01" placeholder="เว้นว่างเพื่อใช้ราคาเกม">
-                    <div class="form-text">ตั้งเป้าหมายตามราคาเกมหรือกำหนดจำนวนเองได้</div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label for="target-amount" class="form-label fw-semibold text-secondary small">จำนวนเงินเป้าหมาย (บาท)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted">฿</span>
+                    <input id="target-amount" class="form-control py-2.5" name="target_amount" type="number" min="0.01" step="0.01" placeholder="เว้นว่างไว้เพื่อใช้ราคาเกม">
                 </div>
-                <div class="col-12 col-md-3">
-                    <button class="btn btn-primary w-100" type="submit">เพิ่มเป้าหมาย</button>
-                </div>
-            </form>
-        {% else %}
-            <p class="text-muted mb-0">ขณะนี้ยังไม่มีเกมให้เลือก กรุณากลับมาดูใหม่ภายหลัง</p>
-        {% endif %}
-    </div>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <button class="sf-btn sf-btn--primary w-100 py-2.5" type="submit">
+                    <i class="bi bi-piggy-bank-fill fs-5"></i>
+                    <span>เริ่มออมเงิน</span>
+                </button>
+            </div>
+        </form>
+    {% else %}
+        <div class="text-center py-3 text-muted">
+            <i class="bi bi-inbox fs-2 d-block mb-1"></i>
+            ขณะนี้ยังไม่มีเกมเปิดให้เลือกในระบบ กรุณากลับมาตรวจสอบใหม่ในภายหลัง
+        </div>
+    {% endif %}
 </section>
 
+<!-- Active Goals List -->
 <section class="mb-5">
-    <h2 class="h4 mb-3">รายการออมของฉัน</h2>
-    <div class="row row-cols-1 row-cols-lg-2 g-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h2 class="h4 mb-0 fw-bold d-flex align-items-center gap-2">
+            <span>🎯</span> รายการเป้าหมายออมเงินของฉัน
+        </h2>
+        <span class="badge sf-bg-mint sf-text-emerald border border-success-subtle rounded-pill px-3 py-2">
+            ทั้งหมด {{ goals|length }} รายการ
+        </span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-lg-2 g-3.5 g-sm-4">
         {% for goal in goals %}
             {% set progress = (goal.saved_cents * 100 / goal.target_cents)|round|int %}
+            {% set clean_progress = [progress, 100]|min %}
+            {% set is_completed = goal.saved_cents >= goal.target_cents %}
+            
             <div class="col">
-                <article class="card h-100 shadow-sm border-0">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between gap-3">
-                            <h3 class="h5">{{ goal.game_name }}</h3>
-                            <span class="text-muted">{{ progress }}%</span>
+                <article class="sf-card {% if is_completed %}sf-card--completed{% endif %} p-3.5 p-sm-4 h-100 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                        <div>
+                            <h3 class="h5 fw-bold text-dark mb-1">{{ goal.game_name }}</h3>
+                            <small class="text-muted d-block"><i class="bi bi-calendar3 me-1"></i> เริ่มสร้างเมื่อ: {{ goal.created_at[:10] }}</small>
                         </div>
-                        <p class="mb-2">ออมแล้ว ฿{{ '%.2f'|format(goal.saved_cents / 100) }} จาก ฿{{ '%.2f'|format(goal.target_cents / 100) }}</p>
-                        <div class="progress mb-3" role="progressbar" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="progress-bar" style="width: {{ [progress, 100]|min }}%"></div>
-                        </div>
-                        {% if goal.saved_cents < goal.target_cents %}
-                            <form action="{{ url_for('deposit_savings', goal_id=goal.id) }}" method="post" class="deposit-form d-flex gap-2 mb-3">
+                        {% if is_completed %}
+                            <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">🎉 ถึงเป้าหมายแล้ว!</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fs-6 fw-bold">{{ progress }}%</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-baseline mb-2">
+                        <span class="fs-5 fw-bold sf-text-emerald">฿{{ '%.2f'|format(goal.saved_cents / 100) }}</span>
+                        <span class="small text-muted">เป้าหมาย: <strong class="text-dark">฿{{ '%.2f'|format(goal.target_cents / 100) }}</strong></span>
+                    </div>
+
+                    <!-- Clean Progress Bar without Linter Errors -->
+                    <div class="sf-progress-track mb-3" role="progressbar" aria-valuenow="{{ clean_progress }}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="sf-progress-fill" style="--sf-progress: {{ clean_progress }}%;"></div>
+                    </div>
+
+                    <div class="mt-auto pt-2">
+                        {% if not is_completed %}
+                            {% set remaining = (goal.target_cents - goal.saved_cents) / 100 %}
+                            <form action="{{ url_for('deposit_savings', goal_id=goal.id) }}" method="post" class="deposit-form mb-3">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <label class="visually-hidden" for="deposit-{{ goal.id }}">จำนวนเงินที่จะออม</label>
-                                <input id="deposit-{{ goal.id }}" class="form-control" name="amount" type="number" min="0.01" max="{{ '%.2f'|format((goal.target_cents - goal.saved_cents) / 100) }}" step="0.01" placeholder="จำนวนเงิน (บาท)" required>
-                                <button class="btn btn-success text-nowrap" type="submit">บันทึกเงินออม</button>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted">฿</span>
+                                    <input id="deposit-{{ goal.id }}" class="form-control" name="amount" type="number" min="0.01" max="{{ '%.2f'|format(remaining) }}" step="0.01" placeholder="ออมเพิ่ม (ขาดอีก ฿{{ '%.2f'|format(remaining) }})" required>
+                                    <button class="sf-btn sf-btn--primary px-3 text-nowrap" type="submit">
+                                        <i class="bi bi-plus-lg me-1"></i> บันทึก
+                                    </button>
+                                </div>
                             </form>
                         {% else %}
-                            <p class="text-success fw-semibold">ถึงเป้าหมายแล้ว!</p>
+                            <div class="p-3 bg-success-subtle text-success border border-success-subtle rounded-3 text-center mb-3">
+                                <i class="bi bi-check-circle-fill me-1 fs-5"></i> <strong>ยินดีด้วย! คุณเก็บเงินซื้อเกมนี้ได้สำเร็จแล้ว</strong>
+                            </div>
                         {% endif %}
-                        <form action="{{ url_for('delete_savings_goal', goal_id=goal.id) }}" method="post" class="delete-goal-form text-end">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="btn btn-outline-danger btn-sm" type="submit">ลบเป้าหมาย</button>
-                        </form>
+
+                        <div class="d-flex justify-content-end">
+                            <form action="{{ url_for('delete_savings_goal', goal_id=goal.id) }}" method="post" class="delete-goal-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-link text-danger text-decoration-none p-0 small border-0" type="submit">
+                                    <i class="bi bi-trash3 me-1"></i> ลบเป้าหมายนี้
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </article>
             </div>
         {% else %}
-            <div class="col-12">
-                <p class="text-muted">ยังไม่มีเป้าหมายการออม เลือกเกมด้านบนเพื่อเริ่มต้น</p>
+            <div class="col-12 text-center py-5 sf-card">
+                <div class="fs-1 mb-2">🐷</div>
+                <h4 class="h5 fw-bold text-dark">ยังไม่มีเป้าหมายการออมเงิน</h4>
+                <p class="text-muted small mb-0">เลือกเกมที่ต้องการจากแบบฟอร์มด้านบนเพื่อเริ่มต้นออมเงินกระปุกแรกของคุณ</p>
             </div>
         {% endfor %}
     </div>
 </section>
 
-<details class="mb-4">
-    <summary class="h5">คลังรูปภาพเดิม</summary>
-    <div class="card shadow-sm border-0 mt-3">
-        <div class="card-body">
-            <h2 class="h6">อัปโหลดรูปภาพ (ไม่เกิน 5MB)</h2>
-            <form id="upload-form" action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" class="row g-3 align-items-end">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="col-12 col-md-9">
-                    <label for="image-file" class="form-label">เลือกรูปภาพ</label>
-                    <input id="image-file" class="form-control" type="file" name="file" accept="image/png, image/jpeg, image/webp" required>
+<!-- Collapsible Storage Section -->
+<section class="accordion mb-4" id="gallery-accordion">
+    <div class="accordion-item border-0 sf-card">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed py-3 bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#gallery-collapse" aria-expanded="false">
+                <i class="bi bi-images me-2 fs-5 sf-text-emerald"></i> คลังรูปภาพสลิป / สกรีนช็อตของฉัน (Supabase Storage)
+            </button>
+        </h2>
+        <div id="gallery-collapse" class="accordion-collapse collapse" data-bs-parent="#gallery-accordion">
+            <div class="accordion-body bg-white border-top p-3.5 p-sm-4">
+                <div class="card border-0 bg-light rounded-3 p-3 mb-4">
+                    <h6 class="fw-bold mb-2"><i class="bi bi-cloud-upload me-1 sf-text-emerald"></i> อัปโหลดรูปภาพใหม่ (ไม่เกิน 5MB)</h6>
+                    <form id="upload-form" action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" class="row g-3 align-items-end">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="col-12 col-md-9">
+                            <input id="image-file" class="form-control" type="file" name="file" accept="image/png, image/jpeg, image/webp" required>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <button type="submit" class="sf-btn sf-btn--outline w-100">
+                                <i class="bi bi-upload me-1"></i> อัปโหลดรูป
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-12 col-md-3">
-                    <button type="submit" class="btn btn-outline-primary w-100">อัปโหลดรูป</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div class="row row-cols-2 row-cols-md-4 g-3 mt-1">
-        {% for file in files %}
-            <div class="col">
-                <div class="card h-100">
-                    <img src="{{ supabase_url }}/storage/v1/object/public/{{ bucket }}/users/{{ user_id }}/{{ file.name }}" class="card-img-top object-fit-cover" style="height: 160px;" alt="รูปภาพที่อัปโหลด">
-                    <div class="card-body p-2 text-center">
-                        <small class="text-truncate d-block">{{ file.name }}</small>
-                        <form action="{{ url_for('delete_image', filename=file.name) }}" method="post" class="delete-image-form mt-2">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">ลบรูปภาพ</button>
-                        </form>
-                    </div>
+
+                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
+                    {% for file in files %}
+                        <div class="col">
+                            <div class="card h-100 border rounded-3 overflow-hidden">
+                                <img src="{{ supabase_url }}/storage/v1/object/public/{{ bucket }}/users/{{ user_id }}/{{ file.name }}" 
+                                     class="card-img-top object-fit-cover" 
+                                     style="height: 140px;" 
+                                     alt="รูปภาพที่อัปโหลด">
+                                <div class="card-body p-2 text-center bg-light">
+                                    <small class="text-truncate d-block text-muted mb-2">{{ file.name }}</small>
+                                    <form action="{{ url_for('delete_image', filename=file.name) }}" method="post" class="delete-image-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100 py-1">
+                                            <i class="bi bi-trash"></i> ลบรูป
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="col-12 text-center py-3 text-muted">
+                            <small>ยังไม่มีรูปภาพในคลังสลิปของคุณ</small>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
-        {% else %}
-            <p class="col-12 text-muted">ยังไม่มีรูปภาพที่อัปโหลด</p>
-        {% endfor %}
+        </div>
     </div>
-</details>
+</section>
 {% endblock %}
 
 {% block scripts %}
@@ -123,15 +252,23 @@
     const targetInput = document.getElementById('target-amount');
     if (gameSelect && targetInput) {
         gameSelect.addEventListener('change', () => {
-            targetInput.placeholder = `ราคาเกม ฿${gameSelect.selectedOptions[0].dataset.price}`;
+            const selectedOption = gameSelect.selectedOptions[0];
+            if (selectedOption && selectedOption.dataset.price) {
+                targetInput.placeholder = `ราคาปกติ ฿${selectedOption.dataset.price}`;
+            }
         });
+        if (gameSelect.selectedOptions[0]) {
+            targetInput.placeholder = `ราคาปกติ ฿${gameSelect.selectedOptions[0].dataset.price}`;
+        }
     }
 
     document.querySelectorAll('.deposit-form, #upload-form').forEach((form) => {
         form.addEventListener('submit', () => {
             const button = form.querySelector('button[type="submit"]');
-            button.disabled = true;
-            button.textContent = 'กำลังบันทึก...';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>กำลังบันทึก...';
+            }
         });
     });
 
@@ -140,12 +277,13 @@
             event.preventDefault();
             const result = await Swal.fire({
                 icon: 'warning',
-                title: 'ยืนยันการลบ?',
-                text: 'การลบรายการนี้ไม่สามารถกู้คืนได้',
+                title: 'ยืนยันการลบรายการ?',
+                text: 'เมื่อลบแล้วจะไม่สามารถกู้คืนข้อมูลนี้ได้',
                 showCancelButton: true,
-                confirmButtonText: 'ลบรายการ',
+                confirmButtonText: 'ยืนยันการลบ',
                 cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#dc3545'
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d'
             });
             if (result.isConfirmed) {
                 form.submit();

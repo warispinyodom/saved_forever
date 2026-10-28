@@ -1,45 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Sign Up{% endblock %}
+{% block title %}สมัครสมาชิก | Saved Forever{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-12 col-md-6 col-lg-5">
-        <div class="card shadow-sm border-0 rounded-3">
-            <div class="card-body p-4">
-                <h3 class="card-title text-center mb-4">สมัครสมาชิก</h3>
-                {% if not firebase_web_configured %}
-                    <p class="text-warning">ยังสมัครสมาชิกไม่ได้: กรุณากำหนด FIREBASE_API_KEY ในไฟล์ .env ก่อน</p>
-                {% endif %}
-                <form
-                    id="register-form"
-                    data-firebase-config="{{ firebase_config|tojson|forceescape }}"
-                    data-firebase-configured="{{ firebase_web_configured|tojson }}"
-                >
-                    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
-                    
-                    <div class="mb-3">
-                        <label for="email" class="form-label">อีเมล</label>
-                        <input type="email" class="form-control" id="email" required placeholder="name@example.com">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="password" class="form-label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
-                        <input type="password" class="form-control" id="password" minlength="6" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="confirm-password" class="form-label">ยืนยันรหัสผ่าน</label>
-                        <input type="password" class="form-control" id="confirm-password" minlength="6" required>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-success w-100 py-2" {% if not firebase_web_configured %}disabled{% endif %}>Sign Up</button>
-                </form>
-                
-                <div class="text-center mt-3">
-                    <small>มีบัญชีอยู่แล้ว? <a href="{{ url_for('login') }}">เข้าสู่ระบบที่นี่</a></small>
+<div class="sf-auth-container my-auto">
+    <div class="sf-card">
+        <!-- Auth Header (OOCSS: .sf-auth-header) -->
+        <div class="sf-auth-header">
+            <div class="sf-brand-icon mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.8rem;">🎯</div>
+            <h2 class="h4 fw-bold mb-1">เริ่มต้นออมเงินวันนี้</h2>
+            <p class="text-white-50 small mb-0">สร้างบัญชีเพื่อเริ่มต้นวางแผนซื้อเกมในดวงใจ</p>
+        </div>
+
+        <div class="card-body p-4 p-sm-4">
+            {% if not firebase_web_configured %}
+                <div class="alert alert-warning border-0 bg-warning-subtle text-dark rounded-3 d-flex align-items-center gap-2 mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                    <small>ยังสมัครสมาชิกไม่ได้: กรุณากำหนด <strong>FIREBASE_API_KEY</strong> ในไฟล์ <code>.env</code> ก่อน</small>
                 </div>
+            {% endif %}
+
+            <form
+                id="register-form"
+                data-firebase-config="{{ firebase_config|tojson|forceescape }}"
+                data-firebase-configured="{{ firebase_web_configured|tojson }}"
+            >
+                <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label for="email" class="form-label fw-semibold text-secondary small">อีเมลสำหรับลงทะเบียน</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
+                        <input type="email" class="form-control border-start-0 py-2" id="email" placeholder="name@example.com" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label fw-semibold text-secondary small">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-key"></i></span>
+                        <input type="password" class="form-control border-start-0 py-2" id="password" minlength="6" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="confirm-password" class="form-label fw-semibold text-secondary small">ยืนยันรหัสผ่านอีกครั้ง</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-shield-check"></i></span>
+                        <input type="password" class="form-control border-start-0 py-2" id="confirm-password" minlength="6" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="sf-btn sf-btn--primary w-100 py-2 fs-6" {% if not firebase_web_configured %}disabled{% endif %}>
+                    <i class="bi bi-person-plus-fill fs-5"></i>
+                    <span>สร้างบัญชีออมเงิน</span>
+                </button>
+            </form>
+
+            <hr class="my-4 text-muted opacity-25">
+
+            <div class="text-center">
+                <p class="small text-muted mb-0">
+                    มีบัญชีอยู่แล้ว? 
+                    <a href="{{ url_for('login') }}" class="sf-text-emerald fw-bold text-decoration-none">เข้าสู่ระบบที่นี่</a>
+                </p>
             </div>
         </div>
+    </div>
+
+    <div class="text-center mt-3">
+        <small class="text-muted d-inline-flex align-items-center gap-1">
+            <i class="bi bi-shield-lock-fill text-success"></i> Secure Registration with OWASP & Firebase Auth
+        </small>
     </div>
 </div>
 {% endblock %}
@@ -64,7 +95,8 @@
             icon: 'error',
             title: 'สมัครสมาชิกไม่สำเร็จ',
             text: messages[error.code] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
-            confirmButtonText: 'ตกลง'
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#059669'
         });
     }
 
@@ -73,7 +105,8 @@
             icon: 'warning',
             title: 'ยังไม่ได้ตั้งค่า Firebase',
             text: 'กรุณากำหนด FIREBASE_API_KEY ในไฟล์ .env ก่อนสมัครสมาชิก',
-            confirmButtonText: 'ตกลง'
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#059669'
         });
     } else {
         firebase.initializeApp(JSON.parse(registerForm.dataset.firebaseConfig));
@@ -82,19 +115,19 @@
 
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (registrationInProgress) {
-                return;
-            }
+            if (registrationInProgress) return;
 
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
+
             if (password !== confirmPassword) {
                 await Swal.fire({
                     icon: 'warning',
                     title: 'รหัสผ่านไม่ตรงกัน',
                     text: 'โปรดตรวจสอบและกรอกรหัสผ่านให้ตรงกัน',
-                    confirmButtonText: 'ตกลง'
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#059669'
                 });
                 return;
             }
@@ -102,8 +135,8 @@
             registrationInProgress = true;
             const submitButton = registerForm.querySelector('button[type="submit"]');
             submitButton.disabled = true;
-            const originalButtonText = submitButton.textContent;
-            submitButton.textContent = 'กำลังสมัครสมาชิก...';
+            const originalButtonContent = submitButton.innerHTML;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>กำลังสมัครสมาชิก...';
             let redirecting = false;
 
             try {
@@ -135,7 +168,8 @@
                         icon: 'warning',
                         title: 'สร้างบัญชีสำเร็จ',
                         text: 'แต่เริ่ม session ไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง',
-                        confirmButtonText: 'ตกลง'
+                        confirmButtonText: 'ตกลง',
+                        confirmButtonColor: '#059669'
                     });
                 }
             } catch (error) {
@@ -144,7 +178,7 @@
                 if (!redirecting) {
                     registrationInProgress = false;
                     submitButton.disabled = false;
-                    submitButton.textContent = originalButtonText;
+                    submitButton.innerHTML = originalButtonContent;
                 }
             }
         });

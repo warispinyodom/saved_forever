@@ -1,240 +1,142 @@
 <!DOCTYPE html>
 <html lang="th">
 {% set flash_messages = get_flashed_messages(with_categories=true) %}
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Saved Forever | ระบบออมเงินซื้อเกม{% endblock %}</title>
 
-    <!-- Google Fonts: Prompt for Modern & Clean Thai Typography -->
+    <!-- Google Fonts: Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Bootstrap 5 CSS & Bootstrap Icons -->
+    <!-- Bootstrap 5 CSS & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    
+
     <!-- SweetAlert2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-    
-    <!-- Custom Stylesheet -->
+
+    <!-- OOCSS Design System Stylesheet -->
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-
-    <!-- Finance & Piggy Bank Design System Styles -->
-    <style>
-        :root {
-            --finance-primary: #059669;
-            --finance-primary-hover: #047857;
-            --finance-dark: #022c22;
-            --finance-surface: #064e3b;
-            --finance-mint: #ecfdf5;
-            --finance-border: #a7f3d0;
-            --body-bg: #f8fafc;
-            --font-family: 'Prompt', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
-        body {
-            font-family: var(--font-family);
-            background-color: var(--body-bg);
-            color: #1e293b;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Modern Finance Navbar */
-        .navbar-finance {
-            background: linear-gradient(135deg, var(--finance-dark) 0%, var(--finance-surface) 100%);
-            box-shadow: 0 4px 20px rgba(2, 44, 34, 0.15);
-            border-bottom: 1px solid rgba(167, 243, 208, 0.15);
-        }
-
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.35rem;
-            color: #ffffff !important;
-            letter-spacing: -0.02em;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .navbar-brand-icon {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
-        }
-
-        .nav-link {
-            color: rgba(255, 255, 255, 0.8) !important;
-            font-weight: 500;
-            padding: 0.5rem 0.85rem !important;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .nav-link:hover, .nav-link:focus {
-            color: #ffffff !important;
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .btn-logout {
-            color: #fca5a5 !important;
-            border: 1px solid rgba(252, 165, 165, 0.25);
-            background-color: rgba(239, 68, 68, 0.1);
-            border-radius: 8px;
-            padding: 0.4rem 0.85rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .btn-logout:hover {
-            background-color: #dc2626 !important;
-            color: #ffffff !important;
-            border-color: #dc2626;
-        }
-
-        .user-pill {
-            background-color: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 50px;
-            padding: 0.25rem 0.75rem;
-            color: #ecfdf5;
-            font-size: 0.85rem;
-        }
-
-        /* Footer Aesthetics */
-        .footer-finance {
-            background-color: #ffffff;
-            border-top: 1px solid #e2e8f0;
-            color: #64748b;
-        }
-
-        .security-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            background-color: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            padding: 0.25rem 0.65rem;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #334155;
-        }
-
-        /* Custom SweetAlert Emerald Theme Override */
-        .swal2-popup {
-            font-family: var(--font-family) !important;
-            border-radius: 16px !important;
-        }
-    </style>
 </head>
-<body>
 
-    <!-- Main Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-finance sticky-top">
-        <div class="container">
-            <!-- Brand / Logo -->
-            <a class="navbar-brand" href="{{ url_for('home') }}">
-                <span class="navbar-brand-icon">🐷</span>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Navbar Responsive Mobile & Desktop -->
+    <nav class="navbar navbar-expand-lg navbar-dark sf-navbar sticky-top">
+        <div class="container px-3 px-sm-4">
+            <!-- Brand Logo -->
+            <a class="navbar-brand fw-bold fs-5 text-white d-flex align-items-center gap-2"
+                href="{{ url_for('home') }}">
+                <span class="sf-brand-icon">🐷</span>
                 <span>Saved Forever</span>
             </a>
 
             <!-- Mobile Menu Toggle Button -->
-            <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler border-0 p-2 text-white" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
+                aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <!-- Navbar Links -->
-            <div class="collapse navbar-collapse mt-2 mt-lg-0" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+            <div class="collapse navbar-collapse mt-3 mt-lg-0" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-2">
                     {% if session.get('user_id') %}
-                        <!-- User Status Badge -->
-                        <li class="nav-item d-none d-lg-block me-2">
-                            <span class="user-pill d-inline-flex align-items-center gap-1">
-                                <i class="bi bi-person-circle text-success"></i>
-                                {{ session.get('email', 'ผู้ใช้งาน') }}
-                                {% if session.get('role') == 'admin' %}
-                                    <span class="badge bg-warning text-dark ms-1">Admin</span>
-                                {% endif %}
+                    <!-- Mobile User Info Header -->
+                    <li class="nav-item d-lg-none mb-2">
+                        <div
+                            class="sf-bg-mint text-dark p-2.5 rounded-3 d-flex align-items-center justify-content-between">
+                            <span class="small fw-semibold text-truncate me-2">
+                                <i class="bi bi-person-circle text-success me-1"></i>{{ session.get('email') }}
                             </span>
-                        </li>
+                            {% if session.get('role') == 'admin' %}
+                            <span class="badge bg-warning text-dark ms-1">Admin</span>
+                            {% endif %}
+                        </div>
+                    </li>
 
-                        <!-- User Dashboard Link -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('dashboard') }}">
-                                <i class="bi bi-piggy-bank"></i>
-                                <span>เป้าหมายออมเงิน</span>
-                            </a>
-                        </li>
+                    <!-- Desktop User Status Badge -->
+                    <li class="nav-item d-none d-lg-block me-1">
+                        <span
+                            class="sf-bg-mint text-dark border border-success-subtle rounded-pill px-3 py-1.5 small d-inline-flex align-items-center gap-1">
+                            <i class="bi bi-person-circle text-success"></i>
+                            {{ session.get('email', 'ผู้ใช้งาน') }}
+                            {% if session.get('role') == 'admin' %}
+                            <span class="badge bg-warning text-dark ms-1">Admin</span>
+                            {% endif %}
+                        </span>
+                    </li>
 
-                        <!-- Admin Dashboard Link (For Admins) -->
-                        {% if session.get('role') == 'admin' %}
-                            <li class="nav-item">
-                                <a class="nav-link text-warning" href="{{ url_for('admin_dashboard') }}">
-                                    <i class="bi bi-sliders"></i>
-                                    <span>จัดการระบบเกม</span>
-                                </a>
-                            </li>
-                        {% endif %}
+                    <!-- Dashboard Links -->
+                    <li class="nav-item">
+                        <a class="nav-link text-white-50 px-3 py-2 rounded-3 d-flex align-items-center gap-2"
+                            href="{{ url_for('dashboard') }}">
+                            <i class="bi bi-piggy-bank fs-5"></i>
+                            <span>เป้าหมายออมเงิน</span>
+                        </a>
+                    </li>
 
-                        <!-- Logout Button Form -->
-                        <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
-                            <form action="{{ url_for('logout') }}" method="post" class="m-0">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button class="btn btn-logout w-100 d-flex align-items-center justify-content-center gap-1 border-0" type="submit">
-                                    <i class="bi bi-box-arrow-right"></i>
-                                    <span>ออกจากระบบ</span>
-                                </button>
-                            </form>
-                        </li>
+                    {% if session.get('role') == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link text-warning px-3 py-2 rounded-3 d-flex align-items-center gap-2"
+                            href="{{ url_for('admin_dashboard') }}">
+                            <i class="bi bi-sliders fs-5"></i>
+                            <span>จัดการระบบเกม</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <!-- Logout Form -->
+                    <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+                        <form action="{{ url_for('logout') }}" method="post" class="m-0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="sf-btn sf-btn--logout w-100" type="submit">
+                                <i class="bi bi-box-arrow-right fs-5"></i>
+                                <span>ออกจากระบบ</span>
+                            </button>
+                        </form>
+                    </li>
                     {% else %}
-                        <!-- Guest Links -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('login') }}">
-                                <i class="bi bi-box-arrow-in-right"></i>
-                                <span>เข้าสู่ระบบ</span>
-                            </a>
-                        </li>
-                        <li class="nav-item mt-2 mt-lg-0">
-                            <a class="btn btn-success text-white fw-semibold px-3 py-2 rounded-2 w-100 d-inline-flex align-items-center justify-content-center gap-1" href="{{ url_for('register') }}">
-                                <i class="bi bi-person-plus-fill"></i>
-                                <span>สมัครสมาชิก</span>
-                            </a>
-                        </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white-50 px-3 py-2 rounded-3 d-flex align-items-center gap-2"
+                            href="{{ url_for('login') }}">
+                            <i class="bi bi-box-arrow-in-right fs-5"></i>
+                            <span>เข้าสู่ระบบ</span>
+                        </a>
+                    </li>
+                    <li class="nav-item mt-2 mt-lg-0">
+                        <a class="sf-btn sf-btn--primary text-decoration-none w-100" href="{{ url_for('register') }}">
+                            <i class="bi bi-person-plus-fill fs-5"></i>
+                            <span>สมัครสมาชิก</span>
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Main Dynamic Content Container -->
-    <main class="container my-4 my-md-5 flex-grow-1">
+    <!-- Main Container -->
+    <main class="container px-3 px-sm-4 my-3 my-md-4 flex-grow-1">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="footer-finance py-3 mt-auto">
-        <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <!-- Responsive Footer -->
+    <footer class="bg-white border-top py-3 mt-auto text-muted">
+        <div
+            class="container px-3 px-sm-4 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 text-center text-sm-start">
             <div class="d-flex align-items-center gap-2">
                 <span class="fs-5">🐷</span>
-                <small class="fw-medium text-dark">Saved Forever</small>
-                <small class="text-muted d-none d-sm-inline">| ระบบวางแผนออมเงินซื้อเกมสำหรับคอเกมตัวจริง</small>
+                <small class="fw-semibold text-dark">Saved Forever</small>
+                <small class="d-none d-md-inline">| ระบบออมเงินซื้อเกมสำหรับคอเกมตัวจริง</small>
             </div>
             <div>
-                <span class="security-badge">
-                    <i class="bi bi-shield-lock-fill text-success"></i> OWASP Top 10 Secured
+                <span class="bg-light border px-3 py-1 rounded-pill small fw-semibold text-secondary d-inline-block">
+                    <i class="bi bi-shield-lock-fill text-success me-1"></i> OWASP Protected
                 </span>
             </div>
         </div>
@@ -243,28 +145,13 @@
     <!-- Core Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    <!-- Flash Messages Handler -->
+
     <script id="flash-messages" type="application/json">{{ flash_messages|tojson }}</script>
     <script>
         const flashMessages = JSON.parse(document.getElementById('flash-messages').textContent);
-        const alertIcons = {
-            success: 'success',
-            info: 'info',
-            warning: 'warning',
-            danger: 'error',
-            error: 'error'
-        };
+        const alertIcons = { success: 'success', info: 'info', warning: 'warning', danger: 'error', error: 'error' };
+        const alertTitles = { success: 'สำเร็จ!', info: 'แจ้งเตือน', warning: 'ข้อควรระวัง', danger: 'เกิดข้อผิดพลาด', error: 'เกิดข้อผิดพลาด' };
 
-        const alertTitles = {
-            success: 'สำเร็จ!',
-            info: 'แจ้งเตือน',
-            warning: 'ข้อควรระวัง',
-            danger: 'เกิดข้อผิดพลาด',
-            error: 'เกิดข้อผิดพลาด'
-        };
-
-        // Display queued flash messages sequentially using SweetAlert2
         flashMessages.reduce(
             (queue, [category, message]) => queue.then(() => Swal.fire({
                 icon: alertIcons[category] || 'info',
@@ -276,7 +163,8 @@
             Promise.resolve()
         );
     </script>
-    
+
     {% block scripts %}{% endblock %}
 </body>
+
 </html>
