@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-6 col-lg-5">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-body p-4">
+                <h3 class="card-title text-center mb-4">สมัครสมาชิก</h3>
+                {% if not firebase_web_configured %}
+                    <p class="text-warning">ยังสมัครสมาชิกไม่ได้: กรุณากำหนด FIREBASE_API_KEY ในไฟล์ .env ก่อน</p>
+                {% endif %}
+                <form
+                    id="register-form"
+                    data-firebase-config="{{ firebase_config|tojson|forceescape }}"
+                    data-firebase-configured="{{ firebase_web_configured|tojson }}"
+                >
+                    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">อีเมล</label>
+                        <input type="email" class="form-control" id="email" required placeholder="name@example.com">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
+                        <input type="password" class="form-control" id="password" minlength="6" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="confirm-password" class="form-label">ยืนยันรหัสผ่าน</label>
+                        <input type="password" class="form-control" id="confirm-password" minlength="6" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100 py-2" {% if not firebase_web_configured %}disabled{% endif %}>Sign Up</button>
+                </form>
+                
+                <div class="text-center mt-3">
+                    <small>มีบัญชีอยู่แล้ว? <a href="{{ url_for('login') }}">เข้าสู่ระบบที่นี่</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script>
+    const registerForm = document.getElementById('register-form');
+    const firebaseConfigured = registerForm.dataset.firebaseConfigured === 'true';
+
+    function showRegisterError(error) {
+        const messages = {
+            'auth/email-already-in-use': 'อีเมลนี้มีบัญชีอยู่แล้ว',
+            'auth/weak-password': 'รหัสผ่านอ่อนเกินไป ควรมีอย่างน้อย 6 ตัวอักษร',
+            'auth/invalid-email': 'รูปแบบอีเมลไม่ถูกต้อง',
+            'auth/network-request-failed': 'เชื่อมต่อระบบไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ต',
+            'auth/unauthorized-domain': 'โดเมนนี้ยังไม่ได้รับอนุญาตใน Firebase'
+        };
+
+        return Swal.fire({
+            icon: 'error',
+            title: 'สมัครสมาชิกไม่สำเร็จ',
+            text: messages[error.code] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+            confirmButtonText: 'ตกลง'
+        });
+    }
+
+    if (!firebaseConfigured) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'ยังไม่ได้ตั้งค่า Firebase',
+            text: 'กรุณากำหนด FIREBASE_API_KEY ในไฟล์ .env ก่อนสมัครสมาชิก',
+            confirmButtonText: 'ตกลง'
+        });
+    } else {
+        firebase.initializeApp(JSON.parse(registerForm.dataset.firebaseConfig));
+
+        let registrationInProgress = false;
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (registrationInProgress) {
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            if (password !== confirmPassword) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'รหัสผ่านไม่ตรงกัน',
+                    text: 'โปรดตรวจสอบและกรอกรหัสผ่านให้ตรงกัน',
+                    confirmButtonText: 'ตกลง'
+                });
+                return;
+            }
+
+            registrationInProgress = true;
+            const submitButton = registerForm.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            const originalButtonText = submitButton.textContent;
+            submitButton.textContent = 'กำลังสมัครสมาชิก...';
+            let redirecting = false;
+
+            try {
+                const csrfToken = document.getElementById('csrf_token').value;
+                const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                const idToken = await userCredential.user.getIdToken();
+
+                const res = await fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ idToken })
+                });
+
+                if (res.ok) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'สมัครสมาชิกสำเร็จ',
+                        text: 'กำลังไปยังหน้าแดชบอร์ด',
+                        showConfirmButton: false,
+                        timer: 1200
+                    });
+                    redirecting = true;
+                    window.location.href = '/dashboard';
+                } else {
+                    await Swal.fire({
+                        icon: 'warning',
+                        title: 'สร้างบัญชีสำเร็จ',
+                        text: 'แต่เริ่ม session ไม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง',
+                        confirmButtonText: 'ตกลง'
+                    });
+                }
+            } catch (error) {
+                await showRegisterError(error);
+            } finally {
+                if (!redirecting) {
+                    registrationInProgress = false;
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalButtonText;
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

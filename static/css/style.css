@@ -1,0 +1,84 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f2937;
+  background: #f3f4f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+}
+
+a {
+  color: #2563eb;
+}
+
+.site-header {
+  padding: 1rem 2rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.site-header a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.page {
+  width: min(100% - 2rem, 28rem);
+  margin: 4rem auto;
+}
+
+.card {
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
+}
+
+.card h1 {
+  margin-top: 0;
+}
+
+.notice {
+  padding: 0.875rem 1rem;
+  color: #713f12;
+  background: #fef3c7;
+  border-radius: 0.5rem;
+  line-height: 1.5;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0;
+}
+
+.form-field input {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+button {
+  padding: 0.7rem 1rem;
+  color: #fff;
+  background: #64748b;
+  border: 0;
+  border-radius: 0.4rem;
+  font: inherit;
+  cursor: not-allowed;
+}
+
+.page-links {
+  margin-top: 1.25rem;
+}

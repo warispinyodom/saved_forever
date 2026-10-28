@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}เป้าหมายการออม | Saved Forever{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h2">เป้าหมายการออมของฉัน</h1>
+    <p class="text-muted mb-0">สวัสดี {{ email }} · Role: {{ role }}</p>
+</div>
+
+<section class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <h2 class="h5 card-title">เริ่มออมซื้อเกม</h2>
+        {% if games %}
+            <form action="{{ url_for('create_savings_goal') }}" method="post" class="row g-3 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-12 col-md-5">
+                    <label for="game-id" class="form-label">เลือกเกม</label>
+                    <select id="game-id" class="form-select" name="game_id" required>
+                        {% for game in games %}
+                            <option value="{{ game.id }}" data-price="{{ '%.2f'|format(game.price_cents / 100) }}">
+                                {{ game.name }} — ฿{{ '%.2f'|format(game.price_cents / 100) }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="target-amount" class="form-label">เป้าหมายที่ต้องการออม (บาท)</label>
+                    <input id="target-amount" class="form-control" name="target_amount" type="number" min="0.01" step="0.01" placeholder="เว้นว่างเพื่อใช้ราคาเกม">
+                    <div class="form-text">ตั้งเป้าหมายตามราคาเกมหรือกำหนดจำนวนเองได้</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <button class="btn btn-primary w-100" type="submit">เพิ่มเป้าหมาย</button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-muted mb-0">ขณะนี้ยังไม่มีเกมให้เลือก กรุณากลับมาดูใหม่ภายหลัง</p>
+        {% endif %}
+    </div>
+</section>
+
+<section class="mb-5">
+    <h2 class="h4 mb-3">รายการออมของฉัน</h2>
+    <div class="row row-cols-1 row-cols-lg-2 g-3">
+        {% for goal in goals %}
+            {% set progress = (goal.saved_cents * 100 / goal.target_cents)|round|int %}
+            <div class="col">
+                <article class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between gap-3">
+                            <h3 class="h5">{{ goal.game_name }}</h3>
+                            <span class="text-muted">{{ progress }}%</span>
+                        </div>
+                        <p class="mb-2">ออมแล้ว ฿{{ '%.2f'|format(goal.saved_cents / 100) }} จาก ฿{{ '%.2f'|format(goal.target_cents / 100) }}</p>
+                        <div class="progress mb-3" role="progressbar" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar" style="width: {{ [progress, 100]|min }}%"></div>
+                        </div>
+                        {% if goal.saved_cents < goal.target_cents %}
+                            <form action="{{ url_for('deposit_savings', goal_id=goal.id) }}" method="post" class="deposit-form d-flex gap-2 mb-3">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <label class="visually-hidden" for="deposit-{{ goal.id }}">จำนวนเงินที่จะออม</label>
+                                <input id="deposit-{{ goal.id }}" class="form-control" name="amount" type="number" min="0.01" max="{{ '%.2f'|format((goal.target_cents - goal.saved_cents) / 100) }}" step="0.01" placeholder="จำนวนเงิน (บาท)" required>
+                                <button class="btn btn-success text-nowrap" type="submit">บันทึกเงินออม</button>
+                            </form>
+                        {% else %}
+                            <p class="text-success fw-semibold">ถึงเป้าหมายแล้ว!</p>
+                        {% endif %}
+                        <form action="{{ url_for('delete_savings_goal', goal_id=goal.id) }}" method="post" class="delete-goal-form text-end">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="btn btn-outline-danger btn-sm" type="submit">ลบเป้าหมาย</button>
+                        </form>
+                    </div>
+                </article>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <p class="text-muted">ยังไม่มีเป้าหมายการออม เลือกเกมด้านบนเพื่อเริ่มต้น</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<details class="mb-4">
+    <summary class="h5">คลังรูปภาพเดิม</summary>
+    <div class="card shadow-sm border-0 mt-3">
+        <div class="card-body">
+            <h2 class="h6">อัปโหลดรูปภาพ (ไม่เกิน 5MB)</h2>
+            <form id="upload-form" action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" class="row g-3 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-12 col-md-9">
+                    <label for="image-file" class="form-label">เลือกรูปภาพ</label>
+                    <input id="image-file" class="form-control" type="file" name="file" accept="image/png, image/jpeg, image/webp" required>
+                </div>
+                <div class="col-12 col-md-3">
+                    <button type="submit" class="btn btn-outline-primary w-100">อัปโหลดรูป</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="row row-cols-2 row-cols-md-4 g-3 mt-1">
+        {% for file in files %}
+            <div class="col">
+                <div class="card h-100">
+                    <img src="{{ supabase_url }}/storage/v1/object/public/{{ bucket }}/users/{{ user_id }}/{{ file.name }}" class="card-img-top object-fit-cover" style="height: 160px;" alt="รูปภาพที่อัปโหลด">
+                    <div class="card-body p-2 text-center">
+                        <small class="text-truncate d-block">{{ file.name }}</small>
+                        <form action="{{ url_for('delete_image', filename=file.name) }}" method="post" class="delete-image-form mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">ลบรูปภาพ</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p class="col-12 text-muted">ยังไม่มีรูปภาพที่อัปโหลด</p>
+        {% endfor %}
+    </div>
+</details>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const gameSelect = document.getElementById('game-id');
+    const targetInput = document.getElementById('target-amount');
+    if (gameSelect && targetInput) {
+        gameSelect.addEventListener('change', () => {
+            targetInput.placeholder = `ราคาเกม ฿${gameSelect.selectedOptions[0].dataset.price}`;
+        });
+    }
+
+    document.querySelectorAll('.deposit-form, #upload-form').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.textContent = 'กำลังบันทึก...';
+        });
+    });
+
+    document.querySelectorAll('.delete-goal-form, .delete-image-form').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'ยืนยันการลบ?',
+                text: 'การลบรายการนี้ไม่สามารถกู้คืนได้',
+                showCancelButton: true,
+                confirmButtonText: 'ลบรายการ',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#dc3545'
+            });
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Sign In{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-body p-4">
+                <h3 class="card-title text-center mb-4">เข้าสู่ระบบ</h3>
+                {% if not firebase_web_configured %}
+                    <p class="text-warning">ยังเข้าสู่ระบบไม่ได้: กรุณากำหนด FIREBASE_API_KEY ในไฟล์ .env ก่อน</p>
+                {% endif %}
+                <form
+                    id="login-form"
+                    data-firebase-config="{{ firebase_config|tojson|forceescape }}"
+                    data-firebase-configured="{{ firebase_web_configured|tojson }}"
+                >
+                    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">อีเมล</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">รหัสผ่าน</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2" {% if not firebase_web_configured %}disabled{% endif %}>Sign In</button>
+                </form>
+                <div class="text-center mt-3">
+                    <small>ยังไม่มีบัญชี? <a href="{{ url_for('register') }}">ลงทะเบียนที่นี่</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script>
+    const loginForm = document.getElementById('login-form');
+    const firebaseConfigured = loginForm.dataset.firebaseConfigured === 'true';
+
+    function showLoginError(error) {
+        const messages = {
+            'auth/invalid-credential': 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+            'auth/user-not-found': 'ไม่พบบัญชีนี้ในระบบ',
+            'auth/wrong-password': 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+            'auth/too-many-requests': 'มีการลองเข้าสู่ระบบหลายครั้ง กรุณาลองใหม่ภายหลัง',
+            'auth/network-request-failed': 'เชื่อมต่อระบบไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ต',
+            'auth/unauthorized-domain': 'โดเมนนี้ยังไม่ได้รับอนุญาตใน Firebase'
+        };
+
+        return Swal.fire({
+            icon: 'error',
+            title: 'เข้าสู่ระบบไม่สำเร็จ',
+            text: messages[error.code] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+            confirmButtonText: 'ตกลง'
+        });
+    }
+
+    if (!firebaseConfigured) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'ยังไม่ได้ตั้งค่า Firebase',
+            text: 'กรุณากำหนด FIREBASE_API_KEY ในไฟล์ .env ก่อนเข้าสู่ระบบ',
+            confirmButtonText: 'ตกลง'
+        });
+    } else {
+        firebase.initializeApp(JSON.parse(loginForm.dataset.firebaseConfig));
+
+        let loginInProgress = false;
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (loginInProgress) {
+                return;
+            }
+
+            loginInProgress = true;
+            const submitButton = loginForm.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            const originalButtonText = submitButton.textContent;
+            submitButton.textContent = 'กำลังเข้าสู่ระบบ...';
+            let redirecting = false;
+
+            try {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const csrfToken = document.getElementById('csrf_token').value;
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                const idToken = await userCredential.user.getIdToken();
+
+                const res = await fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ idToken })
+                });
+
+                if (!res.ok) {
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'เข้าสู่ระบบไม่สำเร็จ',
+                        text: 'ยืนยัน session ไม่สำเร็จ กรุณาลองใหม่',
+                        confirmButtonText: 'ตกลง'
+                    });
+                    return;
+                }
+
+                redirecting = true;
+                window.location.href = '/dashboard';
+            } catch (error) {
+                await showLoginError(error);
+            } finally {
+                if (!redirecting) {
+                    loginInProgress = false;
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalButtonText;
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
