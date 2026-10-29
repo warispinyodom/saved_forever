@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -106,12 +107,12 @@ SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "portfolio-images")
 
 def get_supabase_client() -> Client:
     if not supabase_url or not supabase_key:
-        logger.warning("Supabase URL หรือ Key ยังไม่ได้ตั้งค่าใน Environment Variables")
+        logger.warning("Storage URL หรือ Key ยังไม่ได้ตั้งค่าใน Environment Variables")
         return None
     try:
         return create_client(supabase_url, supabase_key)
     except Exception as err:
-        logger.error(f"ไม่สามารถสร้าง Supabase Client ได้: {err}")
+        logger.error(f"ไม่สามารถเชื่อมต่อ Storage Client ได้: {err}")
         return None
 
 
@@ -146,6 +147,16 @@ def valid_image(file_bytes, extension):
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
         return False
     return True
+
+
+def prevent_duplicate_request(action_key, min_interval_seconds=2):
+    """ป้องกันการกดส่งข้อมูลซ้ำถี่เกินไปในช่วงเวลาสั้นๆ"""
+    current_time = time.time()
+    last_action_time = session.get(f"last_action_{action_key}", 0)
+    if current_time - last_action_time < min_interval_seconds:
+        return True
+    session[f"last_action_{action_key}"] = current_time
+    return False
 
 
 def login_required(view):
@@ -303,7 +314,7 @@ def session_login():
     data = request.get_json(silent=True)
     id_token = data.get("idToken") if isinstance(data, dict) else None
     if not isinstance(id_token, str) or not id_token:
-        return jsonify({"status": "error", "message": "A Firebase ID token is required."}), 400
+        return jsonify({"status": "error", "message": "ต้องใช้ Token ยืนยันตัวตน"}), 400
 
     try:
         decoded_token = firebase_auth.verify_id_token(id_token, app=firebase_app, check_revoked=True)
@@ -313,10 +324,10 @@ def session_login():
         firebase_auth.RevokedIdTokenError,
         firebase_auth.UserDisabledError,
     ):
-        return jsonify({"status": "error", "message": "Invalid or expired token."}), 401
+        return jsonify({"status": "error", "message": "Token ไม่ถูกต้องหรือหมดอายุ"}), 401
     except firebase_admin.exceptions.FirebaseError:
-        logger.exception("Firebase token verification failed.")
-        return jsonify({"status": "error", "message": "Authentication service is unavailable."}), 503
+        logger.exception("Token verification failed.")
+        return jsonify({"status": "error", "message": "ระบบยืนยันตัวตนไม่พร้อมใช้งาน"}), 503
 
     session.clear()
     session["user_id"] = decoded_token["uid"]
@@ -359,8 +370,8 @@ def user_dashboard():
                 options={"limit": 50, "sortBy": {"column": "created_at", "order": "desc"}}
             )
         except Exception:
-            logger.exception("Failed to list files from Supabase Storage.")
-            flash("ไม่สามารถโหลดรายการไฟล์จาก Supabase ได้ในขณะนี้", "danger")
+            logger.exception("Failed to list storage files.")
+            flash("ไม่สามารถโหลดรายการไฟล์รูปภาพได้ในขณะนี้", "danger")
 
     games, goals = fetch_user_dashboard_data(user_id)
 
@@ -380,12 +391,16 @@ def user_dashboard():
 @app.route("/user/savings", methods=["POST"])
 @user_required
 def create_savings_goal():
+    if prevent_duplicate_request("create_goal"):
+        flash("กำลังประมวลผลคำขอก่อนหน้า กรุณารอ สักครู่...", "warning")
+        return redirect(url_for("user_dashboard"))
+
     game_id = request.form.get("game_id", "").strip()
     if not game_id:
         flash("กรุณาเลือกเกมที่ถูกต้อง", "danger")
         return redirect(url_for("user_dashboard"))
 
-    # 1. ตรวจสอบป้องกันการสร้างเป้าหมายซ้ำสำหรับเกมเดิม
+    # ตรวจสอบการตั้งเป้าหมายซ้ำ
     raw_goals = db.reference("savings_goals").order_by_key().limit_to_first(200).get() or {}
     if isinstance(raw_goals, dict):
         for g_id, g_val in raw_goals.items():
@@ -422,6 +437,10 @@ def create_savings_goal():
 @app.route("/user/savings/<goal_id>/deposit", methods=["POST"])
 @user_required
 def deposit_savings(goal_id):
+    if prevent_duplicate_request(f"deposit_{goal_id}"):
+        flash("ระบบกำลังบันทึกรายการก่อนหน้า กรุณาอย่ากดส่งซ้ำ", "warning")
+        return redirect(url_for("user_dashboard"))
+
     amount_cents = parse_amount_cents(request.form.get("amount", "").strip())
     if amount_cents is None:
         flash("จำนวนเงินออมต้องมากกว่า 0 และใส่ทศนิยมได้ไม่เกิน 2 ตำแหน่ง", "danger")
@@ -459,6 +478,10 @@ def deposit_savings(goal_id):
 @app.route("/user/savings/<goal_id>/update", methods=["POST"])
 @user_required
 def update_savings_goal(goal_id):
+    if prevent_duplicate_request(f"update_goal_{goal_id}"):
+        flash("ระบบกำลังบันทึกรายการก่อนหน้า กรุณารอสักครู่", "warning")
+        return redirect(url_for("user_dashboard"))
+
     goal_ref = db.reference(f"savings_goals/{goal_id}")
     goal = goal_ref.get()
     if not goal or str(goal.get("user_id")) != str(session["user_id"]):
@@ -505,6 +528,10 @@ def update_savings_goal(goal_id):
 @app.route("/user/savings/<goal_id>/delete", methods=["POST"])
 @user_required
 def delete_savings_goal(goal_id):
+    if prevent_duplicate_request(f"delete_goal_{goal_id}"):
+        flash("กำลังดำเนินการลบรายการ กรุณารอสักครู่", "warning")
+        return redirect(url_for("user_dashboard"))
+
     goal_ref = db.reference(f"savings_goals/{goal_id}")
     goal = goal_ref.get()
     if not goal or str(goal.get("user_id")) != str(session["user_id"]):
@@ -526,6 +553,10 @@ def admin_dashboard():
 @app.route("/admin/games", methods=["POST"])
 @admin_required
 def create_game():
+    if prevent_duplicate_request("admin_create_game"):
+        flash("กำลังเพิ่มรายการเกม กรุณารอสักครู่", "warning")
+        return redirect(url_for("admin_dashboard"))
+
     name = request.form.get("name", "").strip()
     description = request.form.get("description", "").strip()
     price_cents = parse_amount_cents(request.form.get("price", "").strip())
@@ -673,6 +704,10 @@ def batch_game_actions():
 @user_required
 def upload_file():
     global supabase
+    if prevent_duplicate_request("upload_image"):
+        flash("กำลังอัปโหลดไฟล์ก่อนหน้า กรุณารอสักครู่", "warning")
+        return redirect(url_for("dashboard"))
+
     uploaded_file = request.files.get("file")
     if uploaded_file is None or not uploaded_file.filename:
         flash("กรุณาเลือกไฟล์รูปภาพ", "danger")
@@ -690,7 +725,7 @@ def upload_file():
 
     client = supabase or get_supabase_client()
     if not client:
-        flash("ไม่สามารถเชื่อมต่อ Supabase Storage ได้ กรุณาตรวจสอบการตั้งค่าคีย์", "danger")
+        flash("ไม่สามารถเชื่อมต่อระบบจัดเก็บไฟล์ได้ในขณะนี้", "danger")
         return redirect(url_for("dashboard"))
 
     safe_name = f"{uuid.uuid4().hex}.{extension}"
@@ -704,7 +739,7 @@ def upload_file():
             file_options={"content-type": content_type},
         )
     except Exception:
-        logger.exception("Failed to upload image to Supabase Storage.")
+        logger.exception("Failed to upload image.")
         flash("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่", "danger")
     else:
         flash("อัปโหลดรูปภาพสำเร็จ", "success")
@@ -716,20 +751,24 @@ def upload_file():
 @user_required
 def delete_image(filename):
     global supabase
+    if prevent_duplicate_request(f"delete_img_{filename}"):
+        flash("กำลังลบไฟล์รูปภาพ กรุณารอสักครู่", "warning")
+        return redirect(url_for("dashboard"))
+
     if not re.fullmatch(r"[0-9a-f]{32}\.(?:png|jpg|jpeg|webp)", filename):
         flash("ชื่อไฟล์รูปภาพไม่ถูกต้อง", "danger")
         return redirect(url_for("dashboard"))
 
     client = supabase or get_supabase_client()
     if not client:
-        flash("ไม่สามารถเชื่อมต่อ Supabase Storage ได้", "danger")
+        flash("ไม่สามารถเชื่อมต่อระบบจัดเก็บไฟล์ได้", "danger")
         return redirect(url_for("dashboard"))
 
     file_path = f"users/{session['user_id']}/{filename}"
     try:
         client.storage.from_(SUPABASE_BUCKET).remove([file_path])
     except Exception:
-        logger.exception("Failed to delete image from Supabase Storage.")
+        logger.exception("Failed to delete image.")
         flash("ลบรูปภาพไม่สำเร็จ กรุณาลองใหม่", "danger")
     else:
         flash("ลบรูปภาพสำเร็จ", "success")

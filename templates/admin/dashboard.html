@@ -16,7 +16,7 @@
         </div>
         <div>
             <span class="badge bg-light text-dark fs-6 px-3 py-2 rounded-pill shadow-sm d-inline-flex align-items-center gap-1">
-                <i class="bi bi-shield-check text-success"></i> OWASP Protected
+                <i class="bi bi-shield-check text-success"></i> ระบบรักษาความปลอดภัยขั้นสูง
             </span>
         </div>
     </div>
@@ -67,7 +67,7 @@
     <h2 class="h5 card-title mb-3 d-flex align-items-center gap-2 fw-bold">
         <span class="sf-text-emerald fs-5">➕</span> เพิ่มเป้าหมายออมเงินซื้อเกมใหม่
     </h2>
-    <form action="{{ url_for('create_game') }}" method="post" class="row g-3 align-items-end">
+    <form id="create-game-form" action="{{ url_for('create_game') }}" method="post" class="row g-3 align-items-end sf-protected-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="col-12 col-md-4">
             <label for="new-game-name" class="form-label">ชื่อเกม / ซีรีส์</label>
@@ -86,7 +86,7 @@
         </div>
         <div class="col-12 text-end mt-3">
             <button class="sf-btn sf-btn--primary px-4" type="submit">
-                <i class="bi bi-plus-circle fs-5"></i> เพิ่มรายการออมเงิน
+                <i class="bi bi-plus-circle fs-5"></i> <span>เพิ่มรายการออมเงิน</span>
             </button>
         </div>
     </form>
@@ -94,7 +94,7 @@
 
 <!-- Main Batch CRUD Table Section -->
 <section class="sf-card mb-5">
-    <form id="batch-form" action="{{ url_for('batch_game_actions') }}" method="post">
+    <form id="batch-form" action="{{ url_for('batch_game_actions') }}" method="post" class="sf-protected-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" id="batch-action-type" name="action" value="update">
         <input type="hidden" id="batch-active-status" name="active_status" value="1">
@@ -148,11 +148,11 @@
                         </td>
                         <td class="text-end">
                             <div class="d-flex justify-content-end align-items-center gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-success border-0 px-2 fw-semibold d-inline-flex align-items-center gap-1" title="บันทึกรายการนี้" onclick="submitSingleUpdate('{{ game.id }}')">
-                                    <i class="bi bi-floppy-fill"></i> บันทึก
+                                <button type="button" id="btn-single-update-{{ game.id }}" class="btn btn-sm btn-outline-success border-0 px-2 fw-semibold d-inline-flex align-items-center gap-1" title="บันทึกรายการนี้" onclick="submitSingleUpdate('{{ game.id }}', this)">
+                                    <i class="bi bi-floppy-fill"></i> <span>บันทึก</span>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger border-0 px-2 fw-semibold d-inline-flex align-items-center gap-1" {% if game.goal_count %}disabled title="มีผู้ใช้ออมเงินอยู่ ไม่สามารถลบได้"{% endif %} onclick="confirmSingleDelete('{{ game.id }}', '{{ game.name }}')">
-                                    <i class="bi bi-trash3-fill"></i> ลบ
+                                <button type="button" id="btn-single-delete-{{ game.id }}" class="btn btn-sm btn-outline-danger border-0 px-2 fw-semibold d-inline-flex align-items-center gap-1" {% if game.goal_count %}disabled title="มีผู้ใช้ออมเงินอยู่ ไม่สามารถลบได้"{% endif %} onclick="confirmSingleDelete('{{ game.id }}', '{{ game.name }}', this)">
+                                    <i class="bi bi-trash3-fill"></i> <span>ลบ</span>
                                 </button>
                             </div>
                             {% if game.goal_count %}
@@ -181,17 +181,17 @@
                 </div>
                 
                 <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 w-100 w-sm-auto">
-                    <button type="button" class="sf-btn sf-btn--primary py-1.5 px-3 fs-6" onclick="triggerBatchAction('update')">
-                        <i class="bi bi-floppy-fill"></i> บันทึกที่เลือก
+                    <button type="button" class="sf-btn sf-btn--primary py-1.5 px-3 fs-6" onclick="triggerBatchAction('update', '1', this)">
+                        <i class="bi bi-floppy-fill"></i> <span>บันทึกที่เลือก</span>
                     </button>
-                    <button type="button" class="btn btn-outline-light btn-sm py-1.5 px-2.5 fs-6 fw-medium" onclick="triggerBatchAction('toggle_active', '1')" title="เปิดใช้งานที่เลือก">
-                        👁️ เปิด
+                    <button type="button" class="btn btn-outline-light btn-sm py-1.5 px-2.5 fs-6 fw-medium" onclick="triggerBatchAction('toggle_active', '1', this)" title="เปิดใช้งานที่เลือก">
+                        👁️ <span>เปิด</span>
                     </button>
-                    <button type="button" class="btn btn-outline-light btn-sm py-1.5 px-2.5 fs-6 fw-medium" onclick="triggerBatchAction('toggle_active', '0')" title="ปิดใช้งานที่เลือก">
-                        🙈 ปิด
+                    <button type="button" class="btn btn-outline-light btn-sm py-1.5 px-2.5 fs-6 fw-medium" onclick="triggerBatchAction('toggle_active', '0', this)" title="ปิดใช้งานที่เลือก">
+                        🙈 <span>ปิด</span>
                     </button>
-                    <button type="button" class="btn btn-danger btn-sm py-1.5 px-3 fs-6 fw-semibold" onclick="triggerBatchDelete()">
-                        <i class="bi bi-trash3-fill me-1"></i> ลบที่เลือก
+                    <button type="button" class="btn btn-danger btn-sm py-1.5 px-3 fs-6 fw-semibold" onclick="triggerBatchDelete(this)">
+                        <i class="bi bi-trash3-fill me-1"></i> <span>ลบที่เลือก</span>
                     </button>
                 </div>
             </div>
@@ -199,8 +199,8 @@
     </form>
 </section>
 
-<!-- Single Direct CRUD Hidden Forms -->
-<form id="single-update-form" method="post" class="d-none">
+<!-- Direct Single Action Forms -->
+<form id="single-update-form" action="" method="post" class="d-none sf-protected-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="name" id="single-name">
     <input type="hidden" name="price" id="single-price">
@@ -208,7 +208,7 @@
     <input type="hidden" name="active" id="single-active">
 </form>
 
-<form id="single-delete-form" method="post" class="d-none">
+<form id="single-delete-form" action="" method="post" class="d-none sf-protected-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 </form>
 {% endblock %}
@@ -268,18 +268,54 @@
             cb.addEventListener('change', updateBatchBarState);
         });
 
-        // Initialize state on load
+        // 1. จัดการ Loading State ปุ่มในฟอร์มทั่วไป
+        document.querySelectorAll('form').forEach((form) => {
+            form.addEventListener('submit', function (event) {
+                if (this.dataset.submitting === 'true') {
+                    event.preventDefault();
+                    return false;
+                }
+
+                this.dataset.submitting = 'true';
+                const submitBtns = this.querySelectorAll('button[type="submit"], button:not([type="button"])');
+                submitBtns.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                    const textSpan = btn.querySelector('span');
+                    if (textSpan) textSpan.textContent = 'กำลังประมวลผล...';
+                    const icon = btn.querySelector('i');
+                    if (icon) icon.className = 'spinner-border spinner-border-sm me-1';
+                });
+            });
+        });
+
         updateBatchBarState();
     });
 
-    function triggerBatchAction(actionType, activeStatus = '1') {
-        const batchForm = document.getElementById('batch-form');
-        document.getElementById('batch-action-type').value = actionType;
-        document.getElementById('batch-active-status').value = activeStatus;
-        if (batchForm) batchForm.submit();
+    function disableButtonWithLoading(btn) {
+        if (!btn || btn.disabled) return false;
+        btn.disabled = true;
+        btn.classList.add('disabled');
+        const textSpan = btn.querySelector('span');
+        if (textSpan) textSpan.textContent = 'กำลังประมวลผล...';
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = 'spinner-border spinner-border-sm me-1';
+        return true;
     }
 
-    async function triggerBatchDelete() {
+    function triggerBatchAction(actionType, activeStatus = '1', btnElement = null) {
+        const batchForm = document.getElementById('batch-form');
+        if (batchForm.dataset.submitting === 'true') return;
+
+        if (btnElement && !disableButtonWithLoading(btnElement)) return;
+
+        document.getElementById('batch-action-type').value = actionType;
+        document.getElementById('batch-active-status').value = activeStatus;
+        batchForm.dataset.submitting = 'true';
+        batchForm.submit();
+    }
+
+    async function triggerBatchDelete(btnElement = null) {
         const checkedBoxes = document.querySelectorAll('.game-checkbox:checked');
         if (checkedBoxes.length === 0) return;
 
@@ -296,16 +332,23 @@
 
         if (result.isConfirmed) {
             const batchForm = document.getElementById('batch-form');
+            if (batchForm.dataset.submitting === 'true') return;
+
+            if (btnElement) disableButtonWithLoading(btnElement);
+
             document.getElementById('batch-action-type').value = 'delete';
-            if (batchForm) batchForm.submit();
+            batchForm.dataset.submitting = 'true';
+            batchForm.submit();
         }
     }
 
-    function submitSingleUpdate(gameId) {
+    function submitSingleUpdate(gameId, btnElement = null) {
         const row = document.getElementById(`game-row-${gameId}`);
-        if (!row) return;
-
         const form = document.getElementById('single-update-form');
+        if (!row || !form || form.dataset.submitting === 'true') return;
+
+        if (btnElement && !disableButtonWithLoading(btnElement)) return;
+
         form.action = `/admin/games/${gameId}/update`;
 
         const nameInput = row.querySelector(`input[name="name_${gameId}"]`).value;
@@ -318,10 +361,11 @@
         document.getElementById('single-description').value = descInput;
         document.getElementById('single-active').value = activeInput;
 
+        form.dataset.submitting = 'true';
         form.submit();
     }
 
-    async function confirmSingleDelete(gameId, gameName) {
+    async function confirmSingleDelete(gameId, gameName, btnElement = null) {
         const result = await Swal.fire({
             title: `ยืนยันการลบ "${gameName}"?`,
             text: "การลบจะไม่สามารถย้อนกลับได้",
@@ -335,7 +379,12 @@
 
         if (result.isConfirmed) {
             const form = document.getElementById('single-delete-form');
+            if (form.dataset.submitting === 'true') return;
+
+            if (btnElement) disableButtonWithLoading(btnElement);
+
             form.action = `/admin/games/${gameId}/delete`;
+            form.dataset.submitting = 'true';
             form.submit();
         }
     }
