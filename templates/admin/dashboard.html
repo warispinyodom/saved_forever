@@ -28,7 +28,7 @@
         <div class="sf-stat-card h-100">
             <div class="sf-stat-icon">🎮</div>
             <div>
-                <small class="text-muted fw-medium d-block">เกมทั้งหมด</small>
+                <small class="text-muted fw-semibold d-block">เกมทั้งหมด</small>
                 <span class="fs-4 fw-bold text-dark">{{ stats.total_games }}</span>
             </div>
         </div>
@@ -37,7 +37,7 @@
         <div class="sf-stat-card h-100">
             <div class="sf-stat-icon">🟢</div>
             <div>
-                <small class="text-muted fw-medium d-block">เปิดให้ออม</small>
+                <small class="text-muted fw-semibold d-block">เปิดให้ออม</small>
                 <span class="fs-4 fw-bold sf-text-emerald">{{ stats.active_games }}</span>
             </div>
         </div>
@@ -46,7 +46,7 @@
         <div class="sf-stat-card h-100">
             <div class="sf-stat-icon">🎯</div>
             <div>
-                <small class="text-muted fw-medium d-block">เป้าหมายออม</small>
+                <small class="text-muted fw-semibold d-block">เป้าหมายออม</small>
                 <span class="fs-4 fw-bold text-primary">{{ stats.total_goals }}</span>
             </div>
         </div>
@@ -55,7 +55,7 @@
         <div class="sf-stat-card h-100">
             <div class="sf-stat-icon">💰</div>
             <div>
-                <small class="text-muted fw-medium d-block">ออมรวมทั้งสิ้น</small>
+                <small class="text-muted fw-semibold d-block">ออมรวมทั้งสิ้น</small>
                 <span class="fs-4 fw-bold sf-text-emerald">฿{{ "%.2f"|format(stats.total_saved_cents / 100) }}</span>
             </div>
         </div>
@@ -67,33 +67,33 @@
     <h2 class="h5 card-title mb-3 d-flex align-items-center gap-2 fw-bold">
         <span class="sf-text-emerald fs-5">➕</span> เพิ่มเป้าหมายออมเงินซื้อเกมใหม่
     </h2>
-    <form action="{{ url_for('create_game') }}" method="post" class="row g-3">
+    <form action="{{ url_for('create_game') }}" method="post" class="row g-3 align-items-end">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="col-12 col-md-4">
-            <label for="new-game-name" class="form-label fw-semibold text-secondary small">ชื่อเกม / ซีรีส์</label>
-            <input id="new-game-name" class="form-control py-2" name="name" placeholder="เช่น Elden Ring, GTA VI" maxlength="120" required>
+            <label for="new-game-name" class="form-label">ชื่อเกม / ซีรีส์</label>
+            <input id="new-game-name" class="form-control" name="name" placeholder="เช่น Elden Ring, GTA VI" maxlength="120" required>
         </div>
         <div class="col-12 col-md-3">
-            <label for="new-game-price" class="form-label fw-semibold text-secondary small">ราคาเป้าหมาย (บาท)</label>
+            <label for="new-game-price" class="form-label">ราคาเป้าหมาย (บาท)</label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted">฿</span>
-                <input id="new-game-price" class="form-control py-2" name="price" type="number" min="0.01" step="0.01" placeholder="1890.00" required>
+                <input id="new-game-price" class="form-control" name="price" type="number" min="0.01" step="0.01" placeholder="1890.00" required>
             </div>
         </div>
         <div class="col-12 col-md-5">
-            <label for="new-game-description" class="form-label fw-semibold text-secondary small">รายละเอียด / โน้ตเพิ่มเติม</label>
-            <input id="new-game-description" class="form-control py-2" name="description" placeholder="รายละเอียดโปรโมชัน หรือร้านค้า" maxlength="1000">
+            <label for="new-game-description" class="form-label">รายละเอียด / โน้ตเพิ่มเติม</label>
+            <input id="new-game-description" class="form-control" name="description" placeholder="รายละเอียดโปรโมชัน หรือร้านค้า" maxlength="1000">
         </div>
-        <div class="col-12 text-end">
-            <button class="sf-btn sf-btn--primary px-4 py-2" type="submit">
-                <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการออมเงิน
+        <div class="col-12 text-end mt-3">
+            <button class="sf-btn sf-btn--primary px-4" type="submit">
+                <i class="bi bi-plus-circle fs-5"></i> เพิ่มรายการออมเงิน
             </button>
         </div>
     </form>
 </section>
 
 <!-- Main Batch CRUD Table Section -->
-<section class="sf-card mb-5 overflow-hidden">
+<section class="sf-card mb-5">
     <form id="batch-form" action="{{ url_for('batch_game_actions') }}" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" id="batch-action-type" name="action" value="update">
@@ -105,22 +105,22 @@
                 <h2 class="h5 card-title mb-0 fw-bold">รายการเกมในระบบทั้งหมด</h2>
             </div>
             <div class="text-muted small">
-                แก้ไขข้อความและเลือก checkbox เพื่อบันทึก/ลบหลายรายการพร้อมกันได้
+                <i class="bi bi-info-circle me-1"></i>แก้ไขข้อความและเลือก checkbox เพื่อจัดการหลายรายการพร้อมกันได้
             </div>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+            <table class="table table-hover align-middle mb-0 sf-admin-table">
+                <thead>
                     <tr>
-                        <th style="width: 40px;" class="text-center py-3">
+                        <th style="width: 46px;" class="text-center py-3">
                             <input class="form-check-input" type="checkbox" id="select-all" title="เลือกทั้งหมด">
                         </th>
-                        <th style="min-width: 180px;" class="py-3">ชื่อเกม</th>
-                        <th style="min-width: 130px;" class="py-3">ราคาเป้าหมาย (บาท)</th>
-                        <th style="min-width: 200px;" class="py-3">รายละเอียด</th>
-                        <th style="width: 90px;" class="text-center py-3">สถานะ</th>
-                        <th style="min-width: 150px;" class="text-end py-3">การจัดการเดี่ยว</th>
+                        <th style="min-width: 200px;" class="py-3">ชื่อเกม</th>
+                        <th style="min-width: 140px;" class="py-3">ราคาเป้าหมาย (บาท)</th>
+                        <th style="min-width: 220px;" class="py-3">รายละเอียด</th>
+                        <th style="width: 100px;" class="text-center py-3">สถานะ</th>
+                        <th style="min-width: 160px;" class="text-end py-3">การจัดการเดี่ยว</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -130,33 +130,33 @@
                             <input class="form-check-input game-checkbox" type="checkbox" name="game_ids" value="{{ game.id }}">
                         </td>
                         <td>
-                            <input class="form-control form-control-sm fw-medium" name="name_{{ game.id }}" value="{{ game.name }}" maxlength="120" required>
+                            <input class="form-control form-control-sm fw-semibold" name="name_{{ game.id }}" value="{{ game.name }}" maxlength="120" required>
                         </td>
                         <td>
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light">฿</span>
-                                <input class="form-control text-end fw-bold sf-text-emerald" name="price_{{ game.id }}" type="number" min="0.01" step="0.01" value="{{ '%.2f'|format(game.price_cents / 100) }}" required>
+                                <span class="input-group-text bg-light fw-medium">฿</span>
+                                <input class="form-control form-control-sm text-end fw-bold sf-text-emerald" name="price_{{ game.id }}" type="number" min="0.01" step="0.01" value="{{ '%.2f'|format(game.price_cents / 100) }}" required>
                             </div>
                         </td>
                         <td>
                             <input class="form-control form-control-sm text-muted" name="description_{{ game.id }}" value="{{ game.description }}" maxlength="1000">
                         </td>
                         <td class="text-center">
-                            <div class="form-check form-switch d-inline-block">
+                            <div class="form-check form-switch d-inline-flex justify-content-center m-0">
                                 <input class="form-check-input" type="checkbox" role="switch" name="active_{{ game.id }}" value="1" {% if game.active %}checked{% endif %}>
                             </div>
                         </td>
                         <td class="text-end">
                             <div class="d-flex justify-content-end align-items-center gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-success border-0 px-2 fw-semibold" title="บันทึก" onclick="submitSingleUpdate('{{ game.id }}')">
-                                    💾 บันทึก
+                                <button type="button" class="btn btn-sm btn-outline-success border-0 px-2 fw-semibold d-inline-flex align-items-center gap-1" title="บันทึกรายการนี้" onclick="submitSingleUpdate('{{ game.id }}')">
+                                    <i class="bi bi-floppy-fill"></i> บันทึก
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger border-0 px-2 fw-semibold" {% if game.goal_count %}disabled title="มีผู้ใช้ออมเงินอยู่"{% endif %} onclick="confirmSingleDelete('{{ game.id }}', '{{ game.name }}')">
-                                    🗑️ ลบ
+                                <button type="button" class="btn btn-sm btn-outline-danger border-0 px-2 fw-semibold d-inline-flex align-items-center gap-1" {% if game.goal_count %}disabled title="มีผู้ใช้ออมเงินอยู่ ไม่สามารถลบได้"{% endif %} onclick="confirmSingleDelete('{{ game.id }}', '{{ game.name }}')">
+                                    <i class="bi bi-trash3-fill"></i> ลบ
                                 </button>
                             </div>
                             {% if game.goal_count %}
-                                <div class="mt-1"><span class="badge sf-bg-mint sf-text-emerald border border-success-subtle">มีผู้ออม {{ game.goal_count }} รายการ</span></div>
+                                <div class="mt-1"><span class="badge sf-bg-mint sf-text-emerald border border-success-subtle">ผู้ออม {{ game.goal_count }} คน</span></div>
                             {% endif %}
                         </td>
                     </tr>
@@ -172,26 +172,26 @@
             </table>
         </div>
 
-        <!-- Sticky Floating Batch Action Bar (ซ่อนไว้เป็นค่าเริ่มต้น d-none) -->
-        <div id="batch-action-bar" class="sf-batch-bar-wrapper d-none">
-            <div class="bg-dark text-white rounded-4 p-3 shadow-lg border border-secondary d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
+        <!-- Sticky Floating Batch Action Bar -->
+        <div id="batch-action-bar" class="sf-batch-bar-wrapper">
+            <div class="sf-batch-bar-inner d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-2" id="selected-count-badge">เลือกแล้ว 0 รายการ</span>
-                    <span class="small text-white-50 d-none d-md-inline">จัดการรายการที่เลือกพร้อมกัน</span>
+                    <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-1.5 fw-bold" id="selected-count-badge">เลือกแล้ว 0 รายการ</span>
+                    <span class="small text-white-50 d-none d-md-inline">เลือกคำสั่งสำหรับรายการที่เลือก</span>
                 </div>
                 
                 <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 w-100 w-sm-auto">
-                    <button type="button" class="sf-btn sf-btn--primary py-1 px-3 fs-6" onclick="triggerBatchAction('update')">
-                        💾 บันทึกที่เลือก
+                    <button type="button" class="sf-btn sf-btn--primary py-1.5 px-3 fs-6" onclick="triggerBatchAction('update')">
+                        <i class="bi bi-floppy-fill"></i> บันทึกที่เลือก
                     </button>
-                    <button type="button" class="sf-btn sf-btn--outline border-light text-white py-1 px-2 fs-6" onclick="triggerBatchAction('toggle_active', '1')" title="เปิดใช้งาน">
+                    <button type="button" class="btn btn-outline-light btn-sm py-1.5 px-2.5 fs-6 fw-medium" onclick="triggerBatchAction('toggle_active', '1')" title="เปิดใช้งานที่เลือก">
                         👁️ เปิด
                     </button>
-                    <button type="button" class="sf-btn sf-btn--outline border-light text-white py-1 px-2 fs-6" onclick="triggerBatchAction('toggle_active', '0')" title="ปิดใช้งาน">
+                    <button type="button" class="btn btn-outline-light btn-sm py-1.5 px-2.5 fs-6 fw-medium" onclick="triggerBatchAction('toggle_active', '0')" title="ปิดใช้งานที่เลือก">
                         🙈 ปิด
                     </button>
-                    <button type="button" class="btn btn-danger btn-sm fw-semibold px-3 py-2 rounded-2 fs-6" onclick="triggerBatchDelete()">
-                        🗑️ ลบที่เลือก
+                    <button type="button" class="btn btn-danger btn-sm py-1.5 px-3 fs-6 fw-semibold" onclick="triggerBatchDelete()">
+                        <i class="bi bi-trash3-fill me-1"></i> ลบที่เลือก
                     </button>
                 </div>
             </div>
@@ -221,7 +221,6 @@
         const gameCheckboxes = document.querySelectorAll('.game-checkbox');
         const batchActionBar = document.getElementById('batch-action-bar');
         const selectedCountBadge = document.getElementById('selected-count-badge');
-        const batchForm = document.getElementById('batch-form');
 
         function updateBatchBarState() {
             const checkedBoxes = document.querySelectorAll('.game-checkbox:checked');
@@ -243,13 +242,11 @@
                     selectedCountBadge.textContent = `เลือกแล้ว ${count} รายการ`;
                 }
                 if (batchActionBar) {
-                    batchActionBar.classList.remove('d-none');
                     batchActionBar.classList.add('active');
                 }
             } else {
                 if (batchActionBar) {
                     batchActionBar.classList.remove('active');
-                    batchActionBar.classList.add('d-none');
                 }
             }
 

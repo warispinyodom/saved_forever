@@ -94,7 +94,6 @@ firebase_auth_domain = os.getenv("FIREBASE_AUTH_DOMAIN") or (
 )
 firebase_web_configured = bool(firebase_api_key and firebase_auth_domain)
 
-# --- Supabase Safe Initialization (เพื่อไม่ให้ Vercel Deploy Crash) ---
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = (
     os.getenv("SUPABASE_SECRET_KEY")
@@ -106,7 +105,6 @@ SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "portfolio-images")
 
 
 def get_supabase_client() -> Client:
-    """สร้างหรือดึง Supabase Client แบบปลอดภัย"""
     if not supabase_url or not supabase_key:
         logger.warning("Supabase URL หรือ Key ยังไม่ได้ตั้งค่าใน Environment Variables")
         return None
@@ -196,10 +194,9 @@ def render_auth_page(template):
     )
 
 
-# --- Helper Data Processing Functions (Firebase Realtime DB) ---
 def fetch_user_dashboard_data(user_id):
-    raw_games = db.reference("games").get() or {}
-    raw_goals = db.reference("savings_goals").get() or {}
+    raw_games = db.reference("games").order_by_key().limit_to_first(100).get() or {}
+    raw_goals = db.reference("savings_goals").order_by_key().limit_to_first(200).get() or {}
 
     games_dict = {}
     active_games = []
@@ -235,8 +232,8 @@ def fetch_user_dashboard_data(user_id):
 
 
 def fetch_admin_dashboard_data():
-    raw_games = db.reference("games").get() or {}
-    raw_goals = db.reference("savings_goals").get() or {}
+    raw_games = db.reference("games").order_by_key().limit_to_first(200).get() or {}
+    raw_goals = db.reference("savings_goals").order_by_key().limit_to_first(500).get() or {}
 
     goals_list = []
     if isinstance(raw_goals, dict):
@@ -357,7 +354,10 @@ def user_dashboard():
     client = supabase or get_supabase_client()
     if client:
         try:
-            files = client.storage.from_(SUPABASE_BUCKET).list(f"users/{user_id}")
+            files = client.storage.from_(SUPABASE_BUCKET).list(
+                f"users/{user_id}",
+                options={"limit": 50, "sortBy": {"column": "created_at", "order": "desc"}}
+            )
         except Exception:
             logger.exception("Failed to list files from Supabase Storage.")
             flash("ไม่สามารถโหลดรายการไฟล์จาก Supabase ได้ในขณะนี้", "danger")
@@ -384,6 +384,14 @@ def create_savings_goal():
     if not game_id:
         flash("กรุณาเลือกเกมที่ถูกต้อง", "danger")
         return redirect(url_for("user_dashboard"))
+
+    # 1. ตรวจสอบป้องกันการสร้างเป้าหมายซ้ำสำหรับเกมเดิม
+    raw_goals = db.reference("savings_goals").order_by_key().limit_to_first(200).get() or {}
+    if isinstance(raw_goals, dict):
+        for g_id, g_val in raw_goals.items():
+            if isinstance(g_val, dict) and str(g_val.get("user_id")) == str(session["user_id"]) and str(g_val.get("game_id")) == str(game_id):
+                flash("คุณตั้งเป้าหมายออมเงินสำหรับเกมนี้อยู่แล้ว สามารถแก้ไขยอดออมหรือลบรายการเดิมได้", "warning")
+                return redirect(url_for("user_dashboard"))
 
     game_ref = db.reference(f"games/{game_id}")
     game_data = game_ref.get()
@@ -445,6 +453,52 @@ def deposit_savings(goal_id):
     })
 
     flash("บันทึกเงินออมแล้ว", "success")
+    return redirect(url_for("user_dashboard"))
+
+
+@app.route("/user/savings/<goal_id>/update", methods=["POST"])
+@user_required
+def update_savings_goal(goal_id):
+    goal_ref = db.reference(f"savings_goals/{goal_id}")
+    goal = goal_ref.get()
+    if not goal or str(goal.get("user_id")) != str(session["user_id"]):
+        flash("ไม่พบเป้าหมายการออมนี้", "danger")
+        return redirect(url_for("user_dashboard"))
+
+    raw_target = request.form.get("target_amount", "").strip()
+    raw_saved = request.form.get("saved_amount", "").strip()
+
+    updates = {}
+    if raw_target:
+        target_cents = parse_amount_cents(raw_target)
+        if target_cents is None or target_cents <= 0:
+            flash("จำนวนเงินเป้าหมายต้องมากกว่า 0 บาท", "danger")
+            return redirect(url_for("user_dashboard"))
+        updates["target_cents"] = target_cents
+
+    if raw_saved:
+        try:
+            saved_cents = int(Decimal(raw_saved) * 100) if Decimal(raw_saved) >= 0 else None
+        except Exception:
+            saved_cents = None
+
+        if saved_cents is None:
+            flash("จำนวนเงินออมสะสมต้องไม่ติดลบ", "danger")
+            return redirect(url_for("user_dashboard"))
+
+        current_target = updates.get("target_cents", int(goal.get("target_cents", 0)))
+        if saved_cents > current_target:
+            flash("จำนวนเงินออมสะสมต้องไม่เกินเป้าหมาย", "warning")
+            return redirect(url_for("user_dashboard"))
+
+        updates["saved_cents"] = saved_cents
+
+    if updates:
+        goal_ref.update(updates)
+        flash("อัปเดตข้อมูลเป้าหมายการออมเรียบร้อยแล้ว", "success")
+    else:
+        flash("ไม่มีการเปลี่ยนแปลงข้อมูล", "info")
+
     return redirect(url_for("user_dashboard"))
 
 
@@ -532,7 +586,7 @@ def delete_game(game_id):
         flash("ไม่พบรายการเกมที่ต้องการลบ", "danger")
         return redirect(url_for("admin_dashboard"))
 
-    raw_goals = db.reference("savings_goals").get() or {}
+    raw_goals = db.reference("savings_goals").order_by_key().limit_to_first(500).get() or {}
     has_goals = any(isinstance(v, dict) and str(v.get("game_id")) == str(game_id) for v in raw_goals.values())
 
     if has_goals:
@@ -554,7 +608,7 @@ def batch_game_actions():
         flash("กรุณาเลือกรายการอย่างน้อย 1 รายการเพื่อดำเนินการ", "warning")
         return redirect(url_for("admin_dashboard"))
 
-    raw_goals = db.reference("savings_goals").get() or {}
+    raw_goals = db.reference("savings_goals").order_by_key().limit_to_first(500).get() or {}
     goals_list = [v for v in raw_goals.values() if isinstance(v, dict)]
 
     if action == "delete":

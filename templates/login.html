@@ -2,16 +2,16 @@
 {% block title %}เข้าสู่ระบบ | Saved Forever{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-center min-vh-75 py-3">
+<div class="d-flex align-items-center justify-content-center py-2 py-sm-4">
     <div class="sf-auth-container">
         <div class="sf-card">
             <div class="sf-auth-header">
-                <div class="sf-brand-icon mx-auto mb-2" style="width: 54px; height: 54px; font-size: 1.6rem;">🐷</div>
-                <h2 class="h4 fw-bold mb-1">ยินดีต้อนรับกลับมา!</h2>
+                <div class="sf-brand-icon mx-auto mb-2.5" style="width: 56px; height: 56px; font-size: 1.65rem;">🐷</div>
+                <h2 class="h4 fw-bold mb-1.5">ยินดีต้อนรับกลับมา!</h2>
                 <p class="text-white-50 small mb-0">เข้าสู่ระบบเพื่อจัดการเป้าหมายการออมเงินซื้อเกม</p>
             </div>
 
-            <div class="card-body p-3.5 p-sm-4">
+            <div class="sf-auth-body">
                 {% if not firebase_web_configured %}
                     <div class="alert alert-warning border-0 bg-warning-subtle text-dark rounded-3 d-flex align-items-center gap-2 mb-4" role="alert">
                         <i class="bi bi-exclamation-triangle-fill text-warning fs-5 flex-shrink-0"></i>
@@ -26,26 +26,26 @@
                 >
                     <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label fw-semibold text-secondary small">อีเมลบัญชีผู้ใช้</label>
+                    <div class="mb-3.5">
+                        <label for="email" class="form-label">อีเมลบัญชีผู้ใช้</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light text-muted"><i class="bi bi-envelope-at"></i></span>
-                            <input type="email" class="form-control py-2 fs-6" id="email" placeholder="name@example.com" required>
+                            <span class="input-group-text"><i class="bi bi-envelope-at fs-6"></i></span>
+                            <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label for="password" class="form-label fw-semibold text-secondary small">รหัสผ่าน</label>
+                        <label for="password" class="form-label">รหัสผ่าน</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light text-muted"><i class="bi bi-lock"></i></span>
-                            <input type="password" class="form-control py-2 fs-6" id="password" placeholder="••••••••" required>
-                            <button class="btn btn-outline-secondary border-start-0" type="button" id="toggle-password" title="สลับการแสดงรหัสผ่าน">
-                                <i class="bi bi-eye" id="toggle-password-icon"></i>
+                            <span class="input-group-text"><i class="bi bi-lock fs-6"></i></span>
+                            <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+                            <button class="sf-input-btn" type="button" id="toggle-password" title="สลับการแสดงรหัสผ่าน" aria-label="แสดง/ซ่อนรหัสผ่าน">
+                                <i class="bi bi-eye fs-6" id="toggle-password-icon"></i>
                             </button>
                         </div>
                     </div>
 
-                    <button type="submit" class="sf-btn sf-btn--primary w-100 py-2.5 fs-6" {% if not firebase_web_configured %}disabled{% endif %}>
+                    <button type="submit" class="sf-btn sf-btn--primary w-100 py-2.5 fs-6 mt-1" {% if not firebase_web_configured %}disabled{% endif %}>
                         <i class="bi bi-box-arrow-in-right fs-5"></i>
                         <span>เข้าสู่ระบบ</span>
                     </button>
@@ -53,7 +53,7 @@
 
                 <hr class="my-4 text-muted opacity-25">
 
-                <div class="text-center">
+                <div class="text-center pt-1">
                     <p class="small text-muted mb-0">
                         ยังไม่มีบัญชีออมเงิน? 
                         <a href="{{ url_for('register') }}" class="sf-text-emerald fw-bold text-decoration-none">ลงทะเบียนที่นี่</a>
@@ -62,7 +62,7 @@
             </div>
         </div>
 
-        <div class="text-center mt-3">
+        <div class="text-center mt-3.5">
             <small class="text-muted d-inline-flex align-items-center gap-1">
                 <i class="bi bi-shield-check text-success"></i> OWASP Protected & Firebase Encrypted
             </small>
@@ -83,7 +83,7 @@
         togglePasswordBtn.addEventListener('click', () => {
             const isPassword = passwordInput.type === 'password';
             passwordInput.type = isPassword ? 'text' : 'password';
-            togglePasswordIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+            togglePasswordIcon.className = isPassword ? 'bi bi-eye-slash fs-6' : 'bi bi-eye fs-6';
         });
     }
 

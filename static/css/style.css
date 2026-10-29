@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAVED FOREVER - OOCSS RESPONSIVE DESIGN SYSTEM (MOBILE & DESKTOP)
+   SAVED FOREVER - OOCSS RESPONSIVE DESIGN SYSTEM (PERFECTED UX/UI)
    ========================================================================== */
 
 /* 1. DESIGN TOKENS (Variables) */
@@ -17,11 +17,13 @@
   --sf-bg-main:     #f8fafc;
   --sf-text-dark:   #0f172a;
   --sf-text-muted:  #64748b;
-  --sf-border:      #e2e8f0;
+  --sf-border:      #cbd5e1;
 
+  /* สไตล์เงาสองชั้น นุ่มนวล สมดุล ไม่จม */
+  --sf-shadow-card: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
   --sf-shadow-sm:   0 2px 8px rgba(0, 0, 0, 0.04);
-  --sf-shadow-md:   0 8px 20px rgba(2, 44, 34, 0.08);
-  --sf-shadow-lg:   0 16px 32px rgba(2, 44, 34, 0.12);
+  --sf-shadow-md:   0 10px 24px rgba(2, 44, 34, 0.1);
+  --sf-shadow-float: 0 20px 35px -10px rgba(15, 23, 42, 0.35);
 
   --sf-radius-sm:   10px;
   --sf-radius-md:   14px;
@@ -29,17 +31,22 @@
   --sf-radius-xl:   24px;
 
   --sf-font-family: 'Prompt', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --sf-touch-target: 46px;
 }
 
 /* 2. BASE RESETS & TYPOGRAPHY */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   font-family: var(--sf-font-family);
   background-color: var(--sf-bg-main);
   color: var(--sf-text-dark);
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
 }
 
-/* ป้องกัน iOS Auto-Zoom เมื่อคลิกที่ช่อง Input บนสมาร์ทโฟน */
 input[type="text"],
 input[type="number"],
 input[type="email"],
@@ -47,26 +54,29 @@ input[type="password"],
 select,
 textarea {
   font-size: 16px !important;
+  line-height: 1.5;
 }
 
 /* 3. NAVIGATION COMPONENT (.sf-navbar) */
 .sf-navbar {
   background: linear-gradient(135deg, var(--sf-emerald-950) 0%, var(--sf-emerald-900) 100%);
-  box-shadow: var(--sf-shadow-md);
+  box-shadow: 0 4px 20px rgba(2, 44, 34, 0.12);
   border-bottom: 1px solid rgba(167, 243, 208, 0.15);
-  padding: 0.75rem 0;
+  padding: 0.85rem 0;
+  z-index: 1030;
 }
 
 .sf-brand-icon {
   background: linear-gradient(135deg, var(--sf-emerald-500) 0%, var(--sf-emerald-600) 100%);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--sf-radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  font-size: 1.3rem;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  flex-shrink: 0;
 }
 
 /* 4. HERO HEADER BANNER (.sf-header-banner) */
@@ -74,28 +84,35 @@ textarea {
   background: linear-gradient(135deg, var(--sf-emerald-950) 0%, var(--sf-emerald-800) 100%);
   color: #ffffff;
   border-radius: var(--sf-radius-lg);
-  padding: 1.25rem;
-  box-shadow: var(--sf-shadow-md);
+  padding: 1.5rem;
+  box-shadow: var(--sf-shadow-card);
 }
 
 @media (min-width: 768px) {
   .sf-header-banner {
-    padding: 2rem 1.75rem;
+    padding: 2rem 2.25rem;
   }
 }
 
 /* 5. CARD COMPONENT (.sf-card) */
 .sf-card {
-  border: none;
-  border-radius: var(--sf-radius-lg);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-xl);
   background: #ffffff;
-  box-shadow: var(--sf-shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--sf-shadow-card);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
   overflow: hidden;
+  padding: 1.25rem;
+}
+
+@media (min-width: 576px) {
+  .sf-card {
+    padding: 1.75rem;
+  }
 }
 
 .sf-card:hover {
-  box-shadow: var(--sf-shadow-md);
+  box-shadow: 0 25px 30px -5px rgba(15, 23, 42, 0.12), 0 10px 12px -5px rgba(15, 23, 42, 0.04);
 }
 
 .sf-card--completed {
@@ -108,15 +125,22 @@ textarea {
   border: 1px solid var(--sf-emerald-200);
   background-color: #ffffff;
   border-radius: var(--sf-radius-md);
-  padding: 1rem;
+  padding: 1.15rem;
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sf-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.1);
 }
 
 .sf-stat-icon {
-  width: 44px;
-  height: 44px;
+  width: 50px;
+  height: 50px;
   flex-shrink: 0;
   border-radius: var(--sf-radius-md);
   background-color: var(--sf-emerald-50);
@@ -124,34 +148,36 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.35rem;
+  font-size: 1.5rem;
 }
 
 /* 7. BUTTONS (.sf-btn) */
 .sf-btn {
   font-weight: 600;
   border-radius: var(--sf-radius-sm);
-  padding: 0.65rem 1.25rem;
-  min-height: 44px; /* Touch-friendly Standard */
+  padding: 0.65rem 1.2rem;
+  min-height: var(--sf-touch-target);
   border: none;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   cursor: pointer;
   text-decoration: none !important;
+  user-select: none;
 }
 
 .sf-btn--primary {
   background: linear-gradient(135deg, var(--sf-emerald-600) 0%, var(--sf-emerald-700) 100%);
   color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
 }
 
 .sf-btn--primary:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--sf-emerald-700) 0%, var(--sf-emerald-800) 100%);
   transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.4);
 }
 
 .sf-btn--outline {
@@ -160,108 +186,284 @@ textarea {
   color: var(--sf-emerald-600) !important;
 }
 
-.sf-btn--outline:hover {
+.sf-btn--outline:hover:not(:disabled) {
   background: var(--sf-emerald-50);
 }
 
-/* 7.1 LOGOUT BUTTON MODIFIER (.sf-btn--logout) */
+.sf-btn:disabled,
+.sf-btn.disabled,
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 .sf-btn--logout {
   background-color: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.35);
   color: #fca5a5 !important;
 }
 
-.sf-btn--logout:hover {
+.sf-btn--logout:hover:not(:disabled) {
   background-color: #ef4444;
   border-color: #ef4444;
   color: #ffffff !important;
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
-  transform: translateY(-1px);
 }
 
-/* 8. PROGRESS BAR (.sf-progress-track, .sf-progress-fill) */
+/* 7.1 SEAMLESS INPUT GROUPS & LABELS */
+.form-label {
+  margin-bottom: 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.input-group {
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-sm);
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background-color: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.input-group:focus-within {
+  border-color: var(--sf-emerald-500) !important;
+  box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.18) !important;
+}
+
+.input-group .form-control,
+.input-group .form-select,
+.input-group .input-group-text,
+.input-group .sf-btn,
+.input-group .sf-input-btn {
+  border: none !important;
+  box-shadow: none !important;
+  min-height: var(--sf-touch-target);
+}
+
+.input-group .input-group-text {
+  background-color: #f8fafc;
+  color: var(--sf-text-muted);
+  padding-left: 0.9rem;
+  padding-right: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--sf-border) !important;
+}
+
+/* ป้องกันไม่ให้ปุ่มที่อยู่ใน input-group ถูกบังคับขยายเต็มบรรทัด */
+.input-group .sf-btn {
+  width: auto !important;
+  border-radius: 0 !important;
+  flex-shrink: 0;
+}
+
+.input-group .sf-input-btn {
+  background-color: #f8fafc;
+  color: var(--sf-text-muted);
+  padding: 0 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 1px solid var(--sf-border) !important;
+}
+
+.input-group .sf-input-btn:hover {
+  background-color: var(--sf-emerald-50);
+  color: var(--sf-emerald-600);
+}
+
+.form-control,
+.form-select {
+  padding: 0.65rem 0.95rem;
+  color: var(--sf-text-dark);
+  border-radius: var(--sf-radius-sm);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--sf-emerald-500);
+  box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.18);
+}
+
+/* 8. PROGRESS BAR (แก้ไขให้ความกว้างทำงานตามตัวแปร --sf-progress หรือ inline style) */
 .sf-progress-track {
   height: 12px;
-  border-radius: 10px;
-  background-color: var(--sf-border);
+  width: 100%;
+  border-radius: 999px;
+  background-color: #e2e8f0;
   overflow: hidden;
+  display: block;
+  margin: 1.25rem 0;
 }
 
 .sf-progress-fill {
   background: linear-gradient(90deg, var(--sf-emerald-500) 0%, var(--sf-emerald-600) 100%);
-  border-radius: 10px;
+  border-radius: 999px;
   height: 100%;
-  width: var(--sf-progress, 0%); /* <--- เพิ่มบรรทัดนี้ลงไป */
+  width: var(--sf-progress, 0%); /* ควบคุมความกว้างจริงจาก % การออม */
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 9. AUTH CONTAINER (.sf-auth-container) */
-.sf-auth-container {
+/* 9. ADMIN TABLE ENHANCEMENTS */
+.sf-admin-table {
   width: 100%;
-  max-width: 440px;
-  margin: 1.5rem auto;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-.sf-auth-header {
-  background: linear-gradient(135deg, var(--sf-emerald-950) 0%, var(--sf-emerald-900) 100%);
-  color: #ffffff;
-  padding: 2rem 1.5rem 1.5rem 1.5rem;
-  text-align: center;
-  border-radius: var(--sf-radius-xl) var(--sf-radius-xl) 0 0;
+.sf-admin-table th {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-bottom: 2px solid var(--sf-border);
+}
+
+.sf-admin-table td {
+  vertical-align: middle;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sf-admin-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.sf-admin-table tbody tr.table-success {
+  background-color: #ecfdf5 !important;
+}
+
+.sf-admin-table .form-control-sm {
+  font-size: 0.9rem !important;
+  padding: 0.45rem 0.65rem;
+  background-color: #f8fafc;
+  border: 1px solid var(--sf-border);
+  transition: all 0.2s ease;
+}
+
+.sf-admin-table .form-control-sm:focus {
+  background-color: #ffffff;
+  border-color: var(--sf-emerald-500);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 /* 10. FLOATING BATCH ACTION BAR (.sf-batch-bar-wrapper) */
 .sf-batch-bar-wrapper {
   position: fixed;
-  bottom: 1.25rem;
+  bottom: 1.5rem;
   left: 50%;
-  transform: translateX(-50%);
-  z-index: 1050;
+  transform: translate(-50%, 100px);
+  z-index: 1080;
   width: calc(100% - 2rem);
-  max-width: 900px;
-  pointer-events: none; /* ป้องกันการบล็อกคลิกบนตารางเมื่อซ่อนอยู่ */
+  max-width: 860px;
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, visibility 0.3s;
+  pointer-events: none;
 }
 
 .sf-batch-bar-wrapper.active {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
   pointer-events: auto;
-  animation: sfSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes sfSlideUp {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 20px);
+.sf-batch-bar-inner {
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffffff;
+  border-radius: var(--sf-radius-lg);
+  padding: 0.9rem 1.25rem;
+  box-shadow: var(--sf-shadow-float);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 11. AUTH CONTAINER (.sf-auth-container) */
+.sf-auth-container {
+  width: 100%;
+  max-width: 440px;
+  margin: 1.5rem auto 2rem auto;
+  padding: 0 0.5rem;
+}
+
+.sf-auth-header {
+  background: linear-gradient(135deg, var(--sf-emerald-950) 0%, var(--sf-emerald-900) 100%);
+  color: #ffffff;
+  padding: 2.25rem 1.5rem 1.75rem 1.5rem;
+  text-align: center;
+  position: relative;
+}
+
+.sf-auth-body {
+  padding: 1.5rem;
+}
+
+@media (min-width: 576px) {
+  .sf-auth-container {
+    margin: 2rem auto 3rem auto;
+    padding: 0;
   }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
+  .sf-auth-body {
+    padding: 2.25rem 2rem;
   }
 }
 
-/* 11. CHECKBOXES TOUCH TARGET */
+/* 12. CHECKBOXES & SWITCHES */
 .form-check-input {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
   cursor: pointer;
 }
 
-/* 12. UTILITIES */
+.form-check-input:checked {
+  background-color: var(--sf-emerald-600);
+  border-color: var(--sf-emerald-600);
+}
+
+.form-switch .form-check-input {
+  width: 2.5rem;
+  height: 1.35rem;
+}
+
+/* 13. UTILITIES */
 .sf-text-emerald { color: var(--sf-emerald-600) !important; }
 .sf-bg-mint       { background-color: var(--sf-emerald-50) !important; }
 
-/* RESPONSIVE ADJUSTMENTS FOR MOBILE VIEWPORTS */
+/* RESPONSIVE ADJUSTMENTS (< 576px) */
 @media (max-width: 576px) {
   .sf-btn {
     width: 100%;
+    font-size: 0.95rem;
   }
   .sf-stat-card {
     padding: 0.85rem;
+    gap: 0.75rem;
+  }
+  .sf-stat-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.25rem;
   }
   .table-responsive {
-    font-size: 0.875rem;
+    font-size: 0.85rem;
   }
   .sf-batch-bar-wrapper {
     bottom: 0.75rem;
     width: calc(100% - 1rem);
+  }
+  .sf-batch-bar-inner {
+    padding: 0.75rem 0.9rem;
   }
 }

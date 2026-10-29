@@ -4,12 +4,14 @@
 {% block content %}
 <!-- คำนวณยอดสรุปสถิติการออมเงินของผู้ใช้งาน -->
 {% set ns = namespace(total_saved=0, total_target=0, completed_count=0) %}
+{% set existing_game_ids = [] %}
 {% for goal in goals %}
     {% set ns.total_saved = ns.total_saved + goal.saved_cents %}
     {% set ns.total_target = ns.total_target + goal.target_cents %}
     {% if goal.saved_cents >= goal.target_cents %}
         {% set ns.completed_count = ns.completed_count + 1 %}
     {% endif %}
+    {% set _ = existing_game_ids.append(goal.game_id|string) %}
 {% endfor %}
 
 <!-- Header Banner Responsive -->
@@ -32,13 +34,13 @@
     </div>
 </div>
 
-<!-- Overview Stats Grid Responsive (1 col Mobile, 3 cols Desktop) -->
+<!-- Overview Stats Grid Responsive -->
 <section class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-lg-4">
         <div class="sf-stat-card h-100">
             <div class="sf-stat-icon">💰</div>
             <div>
-                <small class="text-muted fw-medium d-block">เงินออมสะสมรวม</small>
+                <small class="text-muted fw-semibold d-block">เงินออมสะสมรวม</small>
                 <span class="fs-4 fw-bold sf-text-emerald">฿{{ '%.2f'|format(ns.total_saved / 100) }}</span>
             </div>
         </div>
@@ -47,7 +49,7 @@
         <div class="sf-stat-card h-100">
             <div class="sf-stat-icon">🎮</div>
             <div>
-                <small class="text-muted fw-medium d-block">เป้าหมายทั้งหมด</small>
+                <small class="text-muted fw-semibold d-block">เป้าหมายทั้งหมด</small>
                 <span class="fs-4 fw-bold text-dark">{{ goals|length }} รายการ</span>
             </div>
         </div>
@@ -56,7 +58,7 @@
         <div class="sf-stat-card h-100">
             <div class="sf-stat-icon">🏆</div>
             <div>
-                <small class="text-muted fw-medium d-block">ออมเงินสำเร็จแล้ว</small>
+                <small class="text-muted fw-semibold d-block">ออมเงินสำเร็จแล้ว</small>
                 <span class="fs-4 fw-bold text-primary">{{ ns.completed_count }} เกม</span>
             </div>
         </div>
@@ -64,22 +66,28 @@
 </section>
 
 <!-- Add Savings Goal Section -->
-<section class="sf-card p-3.5 p-sm-4 mb-4">
+<section class="sf-card mb-4">
     <h2 class="h5 card-title mb-3 d-flex align-items-center gap-2 fw-bold">
-        <span class="sf-text-emerald fs-5">➕</span> ตั้งเป้าหมายออมเงินซื้อเกมใหม่
+        <span class="sf-text-emerald fs-5 flex-shrink-0">➕</span>
+        <span>ตั้งเป้าหมายออมเงินซื้อเกมใหม่</span>
     </h2>
     {% if games %}
         <form action="{{ url_for('create_savings_goal') }}" method="post" class="row g-3 align-items-end">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
             <div class="col-12 col-md-5">
-                <label for="game-id" class="form-label fw-semibold text-secondary small">เลือกเกมที่อยากได้</label>
+                <label for="game-id" class="form-label">เลือกเกมที่อยากได้</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-light text-muted"><i class="bi bi-controller"></i></span>
-                    <select id="game-id" class="form-select py-2" name="game_id" required>
+                    <span class="input-group-text"><i class="bi bi-controller fs-6"></i></span>
+                    <select id="game-id" class="form-select" name="game_id" required>
+                        <option value="" disabled selected hidden>-- เลือกเกมที่อยากได้ --</option>
                         {% for game in games %}
-                            <option value="{{ game.id }}" data-price="{{ '%.2f'|format(game.price_cents / 100) }}">
+                            {% set is_already_saved = (game.id|string) in existing_game_ids %}
+                            <option value="{{ game.id }}" 
+                                    data-price="{{ '%.2f'|format(game.price_cents / 100) }}"
+                                    {% if is_already_saved %}disabled{% endif %}>
                                 {{ game.name }} — ฿{{ '%.2f'|format(game.price_cents / 100) }}
+                                {% if is_already_saved %}(ตั้งเป้าหมายไว้แล้ว){% endif %}
                             </option>
                         {% endfor %}
                     </select>
@@ -87,24 +95,24 @@
             </div>
 
             <div class="col-12 col-md-4">
-                <label for="target-amount" class="form-label fw-semibold text-secondary small">จำนวนเงินเป้าหมาย (บาท)</label>
+                <label for="target-amount" class="form-label">จำนวนเงินเป้าหมาย (บาท)</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-light text-muted">฿</span>
-                    <input id="target-amount" class="form-control py-2" name="target_amount" type="number" min="0.01" step="0.01" placeholder="เว้นว่างไว้เพื่อใช้ราคาเกม">
+                    <span class="input-group-text">฿</span>
+                    <input id="target-amount" class="form-control" name="target_amount" type="number" min="0.01" step="0.01" placeholder="เว้นว่างไว้เพื่อใช้ราคาเกม">
                 </div>
             </div>
 
             <div class="col-12 col-md-3">
-                <button class="sf-btn sf-btn--primary w-100 py-2" type="submit">
+                <button class="sf-btn sf-btn--primary w-100" type="submit">
                     <i class="bi bi-piggy-bank-fill fs-5"></i>
                     <span>เริ่มออมเงิน</span>
                 </button>
             </div>
         </form>
     {% else %}
-        <div class="text-center py-3 text-muted">
-            <i class="bi bi-inbox fs-2 d-block mb-1"></i>
-            ขณะนี้ยังไม่มีเกมเปิดให้เลือกในระบบ กรุณากลับมาตรวจสอบใหม่ในภายหลัง
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2 sf-text-emerald"></i>
+            <p class="mb-0 fw-medium">ขณะนี้ยังไม่มีเกมเปิดให้เลือกในระบบ กรุณากลับมาตรวจสอบใหม่ในภายหลัง</p>
         </div>
     {% endif %}
 </section>
@@ -127,7 +135,7 @@
             {% set is_completed = goal.saved_cents >= goal.target_cents %}
             
             <div class="col">
-                <article class="sf-card {% if is_completed %}sf-card--completed{% endif %} p-3.5 p-sm-4 h-100 d-flex flex-column">
+                <article class="sf-card {% if is_completed %}sf-card--completed{% endif %} h-100 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
                         <div>
                             <h3 class="h5 fw-bold text-dark mb-1">{{ goal.game_name }}</h3>
@@ -140,12 +148,13 @@
                         {% endif %}
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-baseline mb-2">
-                        <span class="fs-5 fw-bold sf-text-emerald">฿{{ '%.2f'|format(goal.saved_cents / 100) }}</span>
+                    <div class="d-flex justify-content-between align-items-baseline mb-1">
+                        <span class="fs-4 fw-bold sf-text-emerald">฿{{ '%.2f'|format(goal.saved_cents / 100) }}</span>
                         <span class="small text-muted">เป้าหมาย: <strong class="text-dark">฿{{ '%.2f'|format(goal.target_cents / 100) }}</strong></span>
                     </div>
 
-                    <div class="sf-progress-track mb-3" role="progressbar" aria-valuenow="{{ clean_progress }}" aria-valuemin="0" aria-valuemax="100">
+                    <!-- Progress Bar Track -->
+                    <div class="sf-progress-track" role="progressbar" aria-valuenow="{{ clean_progress }}" aria-valuemin="0" aria-valuemax="100">
                         <div class="sf-progress-fill" style="--sf-progress: {{ clean_progress }}%;"></div>
                     </div>
 
@@ -155,7 +164,7 @@
                             <form action="{{ url_for('deposit_savings', goal_id=goal.id) }}" method="post" class="deposit-form mb-3">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light text-muted">฿</span>
+                                    <span class="input-group-text">฿</span>
                                     <input id="deposit-{{ goal.id }}" class="form-control" name="amount" type="number" min="0.01" max="{{ '%.2f'|format(remaining) }}" step="0.01" placeholder="ออมเพิ่ม (ขาดอีก ฿{{ '%.2f'|format(remaining) }})" required>
                                     <button class="sf-btn sf-btn--primary px-3 text-nowrap" type="submit">
                                         <i class="bi bi-plus-lg me-1"></i> บันทึก
@@ -168,16 +177,62 @@
                             </div>
                         {% endif %}
 
-                        <div class="d-flex justify-content-end">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <!-- ปุ่มแก้ไขยอดเป้าหมาย -->
+                            <button type="button" class="btn btn-link text-secondary text-decoration-none p-0 small border-0 d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#editGoalModal-{{ goal.id }}">
+                                <i class="bi bi-pencil-square"></i> แก้ไขยอดเป้าหมาย
+                            </button>
+
+                            <!-- ปุ่มลบเป้าหมาย -->
                             <form action="{{ url_for('delete_savings_goal', goal_id=goal.id) }}" method="post" class="delete-goal-form">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button class="btn btn-link text-danger text-decoration-none p-0 small border-0" type="submit">
-                                    <i class="bi bi-trash3 me-1"></i> ลบเป้าหมายนี้
+                                <button class="btn btn-link text-danger text-decoration-none p-0 small border-0 d-inline-flex align-items-center gap-1" type="submit">
+                                    <i class="bi bi-trash3"></i> ลบเป้าหมายนี้
                                 </button>
                             </form>
                         </div>
                     </div>
                 </article>
+
+                <!-- Modal แก้ไขข้อมูลเป้าหมายการออม -->
+                <div class="modal fade" id="editGoalModal-{{ goal.id }}" tabindex="-1" aria-labelledby="editGoalModalLabel-{{ goal.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-header-title h5 fw-bold" id="editGoalModalLabel-{{ goal.id }}">
+                                    ✏️ แก้ไขเป้าหมาย: {{ goal.game_name }}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form action="{{ url_for('update_savings_goal', goal_id=goal.id) }}" method="post">
+                                <div class="modal-body py-3">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    
+                                    <div class="mb-3">
+                                        <label for="target-{{ goal.id }}" class="form-label">ปรับเปลี่ยนจำนวนเงินเป้าหมาย (บาท)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">฿</span>
+                                            <input id="target-{{ goal.id }}" class="form-control" name="target_amount" type="number" min="0.01" step="0.01" value="{{ '%.2f'|format(goal.target_cents / 100) }}" required>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label for="saved-{{ goal.id }}" class="form-label">ปรับปรุงยอดเงินสะสมปัจจุบัน (บาท)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">฿</span>
+                                            <input id="saved-{{ goal.id }}" class="form-control" name="saved_amount" type="number" min="0" step="0.01" value="{{ '%.2f'|format(goal.saved_cents / 100) }}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-light px-3" data-bs-dismiss="modal">ยกเลิก</button>
+                                    <button type="submit" class="sf-btn sf-btn--primary px-4">บันทึกการเปลี่ยนแปลง</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         {% else %}
             <div class="col-12 text-center py-5 sf-card">
@@ -189,12 +244,12 @@
     </div>
 </section>
 
-<!-- Collapsible Storage Section -->
+<!-- Collapsible Storage Section (ปรับแก้ไขข้อความไม่แสดง Tech/Database Stack) -->
 <section class="accordion mb-4" id="gallery-accordion">
-    <div class="accordion-item border-0 sf-card">
+    <div class="accordion-item border-0 sf-card p-0">
         <h2 class="accordion-header">
-            <button class="accordion-button collapsed py-3 bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#gallery-collapse" aria-expanded="false">
-                <i class="bi bi-images me-2 fs-5 sf-text-emerald"></i> คลังรูปภาพสลิป / สกรีนช็อตของฉัน (Supabase Storage)
+            <button class="accordion-button collapsed py-3 px-4 bg-white fw-bold text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#gallery-collapse" aria-expanded="false">
+                <i class="bi bi-images me-2 fs-5 sf-text-emerald"></i> คลังรูปภาพสลิปและสกรีนช็อตของฉัน
             </button>
         </h2>
         <div id="gallery-collapse" class="accordion-collapse collapse" data-bs-parent="#gallery-accordion">
@@ -217,16 +272,16 @@
                 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
                     {% for file in files %}
                         <div class="col">
-                            <div class="card h-100 border rounded-3 overflow-hidden">
+                            <div class="card h-100 border rounded-3 overflow-hidden shadow-sm">
                                 <img src="{{ supabase_url }}/storage/v1/object/public/{{ bucket }}/users/{{ user_id }}/{{ file.name }}" 
                                      class="card-img-top object-fit-cover" 
                                      style="height: 140px;" 
                                      alt="รูปภาพที่อัปโหลด">
                                 <div class="card-body p-2 text-center bg-light">
-                                    <small class="text-truncate d-block text-muted mb-2">{{ file.name }}</small>
+                                    <small class="text-truncate d-block text-muted mb-2" title="{{ file.name }}">{{ file.name }}</small>
                                     <form action="{{ url_for('delete_image', filename=file.name) }}" method="post" class="delete-image-form">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100 py-1">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100 py-1 d-inline-flex align-items-center justify-content-center gap-1">
                                             <i class="bi bi-trash"></i> ลบรูป
                                         </button>
                                     </form>
@@ -234,7 +289,8 @@
                             </div>
                         </div>
                     {% else %}
-                        <div class="col-12 text-center py-3 text-muted">
+                        <div class="col-12 text-center py-4 text-muted">
+                            <i class="bi bi-image fs-2 d-block mb-1 text-black-50"></i>
                             <small>ยังไม่มีรูปภาพในคลังสลิปของคุณ</small>
                         </div>
                     {% endfor %}
@@ -246,47 +302,75 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    const gameSelect = document.getElementById('game-id');
-    const targetInput = document.getElementById('target-amount');
-    if (gameSelect && targetInput) {
-        gameSelect.addEventListener('change', () => {
-            const selectedOption = gameSelect.selectedOptions[0];
-            if (selectedOption && selectedOption.dataset.price) {
-                targetInput.placeholder = `ราคาปกติ ฿${selectedOption.dataset.price}`;
-            }
-        });
-        if (gameSelect.selectedOptions[0]) {
-            targetInput.placeholder = `ราคาปกติ ฿${gameSelect.selectedOptions[0].dataset.price}`;
+    document.addEventListener('DOMContentLoaded', () => {
+        const gameSelect = document.getElementById('game-id');
+        const targetInput = document.getElementById('target-amount');
+        if (gameSelect && targetInput) {
+            const updateTargetPlaceholder = () => {
+                const selectedOption = gameSelect.selectedOptions[0];
+                if (selectedOption && selectedOption.dataset.price) {
+                    targetInput.placeholder = `ราคาปกติ ฿${selectedOption.dataset.price}`;
+                } else {
+                    targetInput.placeholder = 'เว้นว่างไว้เพื่อใช้ราคาเกม';
+                }
+            };
+            gameSelect.addEventListener('change', updateTargetPlaceholder);
+            updateTargetPlaceholder();
         }
-    }
 
-    document.querySelectorAll('.deposit-form, #upload-form').forEach((form) => {
-        form.addEventListener('submit', () => {
-            const button = form.querySelector('button[type="submit"]');
-            if (button) {
-                button.disabled = true;
-                button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>กำลังบันทึก...';
+        // 1. จัดการ Loading State สำหรับฟอร์มทั่วไป
+        document.querySelectorAll('form').forEach((form) => {
+            if (form.classList.contains('delete-goal-form') || form.classList.contains('delete-image-form')) {
+                return;
             }
-        });
-    });
 
-    document.querySelectorAll('.delete-goal-form, .delete-image-form').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const result = await Swal.fire({
-                icon: 'warning',
-                title: 'ยืนยันการลบรายการ?',
-                text: 'เมื่อลบแล้วจะไม่สามารถกู้คืนข้อมูลนี้ได้',
-                showCancelButton: true,
-                confirmButtonText: 'ยืนยันการลบ',
-                cancelButtonText: 'ยกเลิก',
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d'
+            form.addEventListener('submit', (event) => {
+                if (form.dataset.submitting === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+
+                const button = form.querySelector('button[type="submit"]');
+                if (button) {
+                    button.disabled = true;
+                    button.classList.add('disabled');
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>กำลังประมวลผล...';
+                }
+                form.dataset.submitting = 'true';
             });
-            if (result.isConfirmed) {
-                form.submit();
-            }
+        });
+
+        // 2. จัดการ Loading State สำหรับฟอร์มลบรายการ (SweetAlert2)
+        document.querySelectorAll('.delete-goal-form, .delete-image-form').forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                if (form.dataset.submitting === 'true') return;
+
+                const result = await Swal.fire({
+                    icon: 'warning',
+                    title: 'ยืนยันการลบรายการ?',
+                    text: 'เมื่อลบแล้วจะไม่สามารถกู้คืนข้อมูลนี้ได้',
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยันการลบ',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                });
+
+                if (result.isConfirmed) {
+                    form.dataset.submitting = 'true';
+                    const button = form.querySelector('button[type="submit"]');
+                    if (button) {
+                        button.disabled = true;
+                        button.classList.add('disabled');
+                        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>กำลังลบ...';
+                    }
+                    form.submit();
+                }
+            });
         });
     });
 </script>
